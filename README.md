@@ -33,7 +33,7 @@ API REST (Node.js + Express, en Render)
 
 - **Una sola cuenta con el mismo correo.** Cualquier persona con cuenta busca, contacta y califica. Quien ofrece servicios además tiene Panel, Servicios y Portafolio, y también puede explorar el catálogo (pestaña *Explorar*).
 - **Catálogo y búsqueda:** categorías, filtros, detalle del servicio, perfil público del prestador, contacto por WhatsApp y opiniones de 1 a 5.
-- **Prestador:** publicar, editar, pausar y borrar servicios; portafolio de fotos de sus trabajos; perfil (oficio, zona, años de experiencia); interruptor "Recibiendo solicitudes"; Aruy Pro (suscripción **simulada**, no se cobra nada).
+- **Prestador:** publicar, editar, pausar y borrar servicios (máximo 2 servicios por prestador); portafolio de hasta 3 fotos por servicio; perfil (oficio, zona, años de experiencia); interruptor "Recibiendo solicitudes"; Aruy Pro (suscripción **simulada**, no se cobra nada).
 - **Cuenta y privacidad:** sesión que se conserva al cerrar la app (token cifrado con Android Keystore), ajustes de tema y tamaño de texto, eliminar la cuenta (borra de verdad los datos y las fotos) y páginas de privacidad en `docs/`.
 
 ## IA en el teléfono (ML Kit)

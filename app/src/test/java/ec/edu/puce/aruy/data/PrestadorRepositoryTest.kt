@@ -6,6 +6,7 @@ import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
 import ec.edu.puce.aruy.data.repository.DatosServicio
 import ec.edu.puce.aruy.data.repository.PrestadorRepository
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
+import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -138,11 +139,25 @@ class PrestadorRepositoryTest {
     }
 
     @Test
+    fun al_pasarse_de_2_servicios_el_409_muestra_el_mensaje_del_servidor() = runBlocking {
+        val texto = "Puedes tener como maximo 2 servicios. Elimina uno para publicar otro."
+        servidor.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":"$texto"}"""))
+
+        val error = runCatching {
+            repositorio.crear(DatosServicio("Instalación", "Instalo breakers", CategoriaServicio.ELECTRICIDAD, 15.0, true))
+        }.exceptionOrNull() as HttpException
+
+        assertEquals("POST", servidor.takeRequest().method)
+        assertEquals(409, error.code())
+        assertEquals(ValidacionesServicio.AVISO_MAX_SERVICIOS, MensajesPrestador.alGuardarServicio(error))
+    }
+
+    @Test
     fun cada_error_de_subida_tiene_su_mensaje() {
         fun mensaje(codigo: Int) = MensajesPrestador.alSubirFoto(
             HttpException(Response.error<Any>(codigo, "{}".toResponseBody("application/json".toMediaType())))
         )
-        assertTrue(mensaje(409).contains("10 fotos"))
+        assertTrue(mensaje(409).contains("3 fotos"))
         assertTrue(mensaje(422).contains("500 KB"))
         assertTrue(mensaje(415).contains("JPG, PNG o WEBP"))
         assertTrue(mensaje(403).contains("no es tuyo"))

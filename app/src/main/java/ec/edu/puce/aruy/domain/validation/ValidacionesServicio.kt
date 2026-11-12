@@ -9,6 +9,10 @@ object ValidacionesServicio {
     const val DESCRIPCION_MAX = 500
     const val PRECIO_MAX = 10_000.0
 
+    /** Servicios que puede tener un prestador; el servidor responde 409 al pasarse (los que ya tenga de más se conservan). */
+    const val MAX_SERVICIOS = 2
+    const val AVISO_MAX_SERVICIOS = "Puedes tener hasta $MAX_SERVICIOS servicios. Elimina uno para publicar otro."
+
     private fun letras(texto: String) = texto.count { it.isLetter() }
 
     fun titulo(valor: String): String? =

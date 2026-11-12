@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 
 const usuarios = new Map(); // correo -> usuario
 const perfiles = []; // { id, usuario_id }
+const servicios = []; // { id, prestador_id, titulo, ... }
 const calificaciones = []; // { contratante_id, perfil_prestador_id }
 let contador = 0;
 
@@ -73,6 +74,14 @@ async function consulta(sql, parametros = []) {
     calificaciones.push({ contratante_id: p1, perfil_prestador_id: p2 });
     return { rows: [{ id: p0, perfil_prestador_id: p2, puntuacion: p3, comentario: p4, fecha_creacion: new Date() }] };
   }
+  if (sql.startsWith('SELECT COUNT(*)::int AS n FROM servicios WHERE prestador_id')) {
+    return { rows: [{ n: servicios.filter((x) => x.prestador_id === p0).length }] };
+  }
+  if (sql.startsWith('INSERT INTO servicios')) {
+    const fila = { id: p0, prestador_id: p1, titulo: p2, descripcion: p3, categoria: p4, precio_referencial: parametros[5], disponible: parametros[6] };
+    servicios.push(fila);
+    return { rows: [{ ...fila }] };
+  }
   throw new Error('SQL no previsto en las pruebas: ' + sql.slice(0, 70));
 }
 
@@ -90,4 +99,4 @@ async function encender() {
 const { firmarToken } = require('../middleware/auth');
 const tokenDe = (usuario) => firmarToken(usuario);
 
-module.exports = { encender, agregarUsuario, crearPerfilDe, tokenDe };
+module.exports = { servicios, encender, agregarUsuario, crearPerfilDe, tokenDe };

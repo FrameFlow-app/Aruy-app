@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.EstadoVacio
@@ -158,10 +159,19 @@ fun MisServiciosScreen(
                         }
                     )
                 }
+                if (ui.servicios.size >= ValidacionesServicio.MAX_SERVICIOS) {
+                    item {
+                        Text(
+                            ValidacionesServicio.AVISO_MAX_SERVICIOS,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
         if (ui.cargando && ui.cargado) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
-        if (ui.servicios.isNotEmpty()) {
+        if (ui.servicios.isNotEmpty() && ui.servicios.size < ValidacionesServicio.MAX_SERVICIOS) {
             ExtendedFloatingActionButton(
                 onClick = onNuevo,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },

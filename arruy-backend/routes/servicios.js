@@ -11,7 +11,8 @@ const { esUuid, textoValido, limpiarEtiquetas, CATEGORIAS } = require('../valida
 const router = express.Router();
 
 const COLUMNAS = 'id, prestador_id, titulo, descripcion, categoria, precio_referencial, disponible';
-const MAX_FOTOS = 10;
+const MAX_SERVICIOS = 2; // por prestador; los que ya tenga de mas se conservan, solo se frena crear nuevos
+const MAX_FOTOS = 3;
 const MAX_ENTRADA = 5 * 1024 * 1024; // lo que se acepta recibir; lo que se guarda pesa como maximo 500 KB (WebP)
 
 function aServicio(f) {
@@ -97,22 +98,35 @@ router.post('/', exigirToken, exigirRol('PRESTADOR'), async (req, res) => {
   if (b.fotos !== undefined && !(Array.isArray(b.fotos) && b.fotos.length === 0)) {
     return res.status(400).json({ error: 'Las fotos se suben despues, una por una, con POST /servicios/{id}/fotos' });
   }
+  const client = await pool.connect();
   try {
-    // En la base, servicios.prestador_id apunta al PERFIL del prestador (perfiles_prestadores)
-    const perfil = await pool.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1', [req.usuario.id]);
+    await client.query('BEGIN');
+    // En la base, servicios.prestador_id apunta al PERFIL del prestador (perfiles_prestadores).
+    // FOR UPDATE bloquea el perfil: dos publicaciones a la vez no pueden pasarse del limite
+    const perfil = await client.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1 FOR UPDATE', [req.usuario.id]);
     if (perfil.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Primero crea tu perfil de prestador (POST /perfiles)' });
     }
-    const s = await pool.query(
+    const c = await client.query('SELECT COUNT(*)::int AS n FROM servicios WHERE prestador_id = $1', [perfil.rows[0].id]);
+    if (c.rows[0].n >= MAX_SERVICIOS) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Puedes tener como maximo 2 servicios. Elimina uno para publicar otro.' });
+    }
+    const s = await client.query(
       `INSERT INTO servicios (id, prestador_id, titulo, descripcion, categoria, precio_referencial, disponible, fecha_publicacion)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        RETURNING ${COLUMNAS}`,
       [crypto.randomUUID(), perfil.rows[0].id, b.titulo.trim(), b.descripcion.trim(), b.categoria, p ?? null, b.disponible ?? true]
     );
+    await client.query('COMMIT');
     res.status(201).json(aServicio(s.rows[0]));
   } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
     registrarError(e);
     res.status(500).json({ error: 'Error al crear el servicio' });
+  } finally {
+    client.release();
   }
 });
 

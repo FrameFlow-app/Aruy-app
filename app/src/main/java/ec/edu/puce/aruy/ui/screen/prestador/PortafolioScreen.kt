@@ -152,7 +152,7 @@ fun PortafolioScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(propio.servicio.titulo, style = MaterialTheme.typography.titleMedium)
-                    Text("${propio.fotos.size} de 10 fotos", style = MaterialTheme.typography.bodyMedium)
+                    Text("${propio.fotos.size} de 3 fotos", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
