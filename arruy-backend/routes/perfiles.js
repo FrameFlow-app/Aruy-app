@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
 const { registrarError } = require('../registro');
-const { exigirToken, exigirRol } = require('../middleware/auth');
+const { exigirToken, exigirRol, firmarToken } = require('../middleware/auth');
 const { textoValido, esUuid } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
 
@@ -10,6 +10,8 @@ const router = express.Router();
 
 const COLUMNAS =
   'id, usuario_id, oficio_principal, descripcion_profesional, zona_cobertura, anios_experiencia, disponible';
+
+const COLUMNAS_USUARIO = 'id, nombre, telefono, rol, estado_verificacion, foto_perfil, activo';
 
 const aPerfil = (p) => ({ ...p, id: String(p.id), usuario_id: String(p.usuario_id) });
 const aniosValidos = (v) => Number.isInteger(v) && v >= 0 && v <= 80;
@@ -150,6 +152,67 @@ router.post('/', exigirToken, exigirRol('PRESTADOR'), async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ error: 'Ya tienes un perfil de prestador' });
     registrarError(e);
     res.status(500).json({ error: 'Error al crear el perfil' });
+  }
+});
+
+// "Quiero ofrecer servicios": una persona que se registro como CONTRATANTE pasa a PRESTADOR con la MISMA cuenta
+// (mismo correo y contrasena; no hace falta crear otra). Se crea su perfil y se cambia su rol en una sola
+// transaccion. Devuelve un token NUEVO, porque el rol viaja dentro del token.
+router.post('/activar', exigirToken, async (req, res) => {
+  const { oficio_principal, zona_cobertura, descripcion_profesional, anios_experiencia } = req.body || {};
+  if (!textoValido(oficio_principal, 100)) return res.status(400).json({ error: 'oficio_principal es obligatorio' });
+  if (!textoValido(zona_cobertura, 100)) return res.status(400).json({ error: 'zona_cobertura es obligatoria' });
+  if (descripcion_profesional != null && !textoValido(descripcion_profesional, 2000)) {
+    return res.status(400).json({ error: 'descripcion_profesional invalida' });
+  }
+  if (anios_experiencia != null && !aniosValidos(anios_experiencia)) {
+    return res.status(400).json({ error: 'anios_experiencia debe ser un entero entre 0 y 80' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const u = await client.query(
+      `SELECT ${COLUMNAS_USUARIO} FROM usuarios WHERE id = $1 FOR UPDATE`,
+      [req.usuario.id]
+    );
+    if (u.rows.length === 0 || !u.rows[0].activo) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const existente = await client.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1', [req.usuario.id]);
+    if (existente.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Ya ofreces servicios con esta cuenta' });
+    }
+    const perfilId = crypto.randomUUID();
+    await client.query(
+      `INSERT INTO perfiles_prestadores
+         (id, usuario_id, oficio_principal, descripcion_profesional, zona_cobertura, anios_experiencia, disponible)
+       VALUES ($1, $2, $3, $4, $5, $6, true)`,
+      [
+        perfilId, req.usuario.id, oficio_principal.trim(),
+        descripcion_profesional == null ? null : descripcion_profesional.trim(),
+        zona_cobertura.trim(), anios_experiencia ?? null,
+      ]
+    );
+    const actualizado = await client.query(
+      `UPDATE usuarios SET rol = 'PRESTADOR' WHERE id = $1 RETURNING ${COLUMNAS_USUARIO}`,
+      [req.usuario.id]
+    );
+    await client.query('COMMIT');
+    const usuario = actualizado.rows[0];
+    res.status(201).json({
+      token: firmarToken(usuario),
+      usuario: { ...usuario, id: String(usuario.id), telefono: usuario.telefono ?? '', foto_perfil: urlPublica(usuario.foto_perfil) },
+      perfil_prestador_id: perfilId,
+    });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (e.code === '23505') return res.status(409).json({ error: 'Ya ofreces servicios con esta cuenta' });
+    registrarError(e);
+    res.status(500).json({ error: 'Error al activar tu perfil de prestador' });
+  } finally {
+    client.release();
   }
 });
 

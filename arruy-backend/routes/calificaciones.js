@@ -35,8 +35,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Calificar a un prestador: solo un CONTRATANTE, una vez por prestador, de 1 a 5
-router.post('/', exigirToken, exigirRol('CONTRATANTE'), async (req, res) => {
+// Calificar a un prestador: cualquier persona con cuenta (contratante o prestador), menos a si misma,
+// una vez por prestador, de 1 a 5
+router.post('/', exigirToken, exigirRol('CONTRATANTE', 'PRESTADOR'), async (req, res) => {
   const { perfil_prestador_id, puntuacion, comentario } = req.body || {};
   if (!esUuid(perfil_prestador_id)) return res.status(400).json({ error: 'perfil_prestador_id invalido' });
   if (!Number.isInteger(puntuacion) || puntuacion < 1 || puntuacion > 5) {
@@ -46,8 +47,11 @@ router.post('/', exigirToken, exigirRol('CONTRATANTE'), async (req, res) => {
     return res.status(400).json({ error: 'comentario invalido (maximo 1000 caracteres)' });
   }
   try {
-    const p = await pool.query('SELECT 1 FROM perfiles_prestadores WHERE id = $1', [perfil_prestador_id]);
+    const p = await pool.query('SELECT usuario_id FROM perfiles_prestadores WHERE id = $1', [perfil_prestador_id]);
     if (p.rows.length === 0) return res.status(404).json({ error: 'Prestador no encontrado' });
+    if (String(p.rows[0].usuario_id) === String(req.usuario.id)) {
+      return res.status(403).json({ error: 'No puedes calificar tu propio perfil' });
+    }
     const r = await pool.query(
       `INSERT INTO calificaciones (id, contratante_id, perfil_prestador_id, puntuacion, comentario, fecha_creacion)
        VALUES ($1, $2, $3, $4, $5, NOW())

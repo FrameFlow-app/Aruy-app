@@ -1,9 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { registrarError } = require('../registro');
+const { firmarToken } = require('../middleware/auth');
 const { textoValido, esEmail, passwordValida, ROLES } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
 
@@ -15,13 +15,6 @@ const COLUMNAS_PUBLICAS = 'id, nombre, telefono, rol, estado_verificacion, foto_
 const HASH_FALSO = bcrypt.hashSync('contrasena-falsa-para-igualar-tiempos', 10);
 
 const aUsuario = (u) => ({ ...u, id: String(u.id), telefono: u.telefono ?? '', foto_perfil: urlPublica(u.foto_perfil) });
-
-function crearToken(u) {
-  return jwt.sign({ rol: u.rol }, process.env.JWT_SECRET, {
-    subject: String(u.id),
-    expiresIn: '8h',
-  });
-}
 
 // Registro. Si el rol es PRESTADOR tambien se crea su perfil (perfiles_prestadores),
 // porque en la base los servicios cuelgan del perfil y no del usuario.
@@ -90,7 +83,7 @@ router.post('/registro', async (req, res) => {
       );
     }
     await client.query('COMMIT');
-    res.status(201).json({ token: crearToken(u), usuario: aUsuario(u), perfil_prestador_id: perfilId });
+    res.status(201).json({ token: firmarToken(u), usuario: aUsuario(u), perfil_prestador_id: perfilId });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
     if (e.code === '23505') {
@@ -123,7 +116,7 @@ router.post('/login', async (req, res) => {
     delete u.password_hash;
     const p = await pool.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1', [u.id]);
     res.json({
-      token: crearToken(u),
+      token: firmarToken(u),
       usuario: aUsuario(u),
       perfil_prestador_id: p.rows[0] ? String(p.rows[0].id) : null,
     });
