@@ -214,7 +214,8 @@ fun DetalleServicioScreen(
                             rol = rol,
                             onEscribir = {
                                 if (rol == RolNavegacion.INVITADO) onCuentaRequerida() else hoja = "calificar"
-                            }
+                            },
+                            puedeEscribir = true
                         )
                     }
                 }
@@ -475,7 +476,12 @@ internal fun PestanaTrabajos(fotos: List<FotoPortafolio>, onAbrirFoto: (Int) -> 
 }
 
 @Composable
-internal fun PestanaOpiniones(opiniones: ResumenOpiniones?, rol: RolNavegacion, onEscribir: () -> Unit) {
+internal fun PestanaOpiniones(
+    opiniones: ResumenOpiniones?,
+    rol: RolNavegacion,
+    onEscribir: () -> Unit,
+    puedeEscribir: Boolean = rol != RolNavegacion.PRESTADOR
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
         if (opiniones == null || opiniones.total == 0) {
             EstadoVacio(
@@ -507,7 +513,7 @@ internal fun PestanaOpiniones(opiniones: ResumenOpiniones?, rol: RolNavegacion, 
                 }
             }
         }
-        if (rol != RolNavegacion.PRESTADOR) {
+        if (puedeEscribir) {
             BotonContorno("Escribir una opinión", onEscribir, ancho = true)
         }
     }

@@ -99,5 +99,7 @@ class AppContainer(contexto: Context) {
     init {
         // Lee la sesión guardada; hasta entonces el estado es "Cargando" y se ve el splash
         alcance.launch { sesionManager.cargar() }
+        // Despierta el servidor gratuito mientras se ve el splash (se duerme tras 15 min sin uso)
+        alcance.launch { cliente.despertarServidor() }
     }
 }

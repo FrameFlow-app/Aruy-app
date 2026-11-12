@@ -1,90 +1,41 @@
-require('dotenv').config();
-const express = require('express');
-const helmet = require('helmet');
-const { rateLimit } = require('express-rate-limit');
+// Enciende el servidor. La aplicacion en si esta en app.js.
+const app = require('./app');
+const pool = require('./db');
 const { registrarError } = require('./registro');
+const { mantenerActivo } = require('./almacenamiento');
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('Falta JWT_SECRET en el archivo .env');
-}
-
-const app = express();
-// Detras de un proxy (Render) todos llegan con la IP del proxy: se confia en 1 salto para ver la IP real.
-// Render define RENDER automaticamente; en otro proxy, definir TRUST_PROXY=1.
-if (process.env.RENDER || process.env.TRUST_PROXY) app.set('trust proxy', 1);
-app.use(helmet());
-app.use(express.json({ limit: '100kb' }));
-
-// Limite general
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 300,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-  })
-);
-
-// Limite mas estricto para registro e inicio de sesion (frena adivinar contrasenas)
-const limiteAuth = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Demasiados intentos, intenta mas tarde' },
+// Un error que nadie atrapo no debe pasar en silencio.
+process.on('unhandledRejection', (motivo) => {
+  console.error('Promesa rechazada sin atrapar:');
+  registrarError(motivo instanceof Error ? motivo : new Error(String(motivo)));
 });
-
-// Limite para subir imagenes (cada una puede pesar hasta 5 MB)
-const limiteImagenes = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Demasiadas imagenes en poco tiempo, intenta mas tarde' },
-});
-
-app.get('/health', (req, res) => res.json({ estado: 'ok' }));
-app.use('/auth', limiteAuth, require('./routes/auth'));
-// Subir fotos (se procesan con sharp): limite de subidas por IP
-app.post('/servicios/:id/fotos', limiteImagenes);
-app.post('/usuarios/yo/foto', limiteImagenes);
-app.use('/servicios', require('./routes/servicios'));
-app.use('/usuarios', require('./routes/usuarios'));
-app.use('/perfiles', require('./routes/perfiles'));
-app.use('/fotos', require('./routes/fotos'));
-app.use('/calificaciones', require('./routes/calificaciones'));
-app.use('/suscripciones', require('./routes/suscripciones'));
-
-// Documentación interactiva (Swagger) en /docs
-try {
-  const swaggerUi = require('swagger-ui-express');
-  const especificacion = require('./swagger');
-  app.use(
-    '/docs',
-    (req, res, next) => {
-      // La pagina de Swagger usa scripts propios que el CSP de helmet bloquearia
-      res.removeHeader('Content-Security-Policy');
-      next();
-    },
-    swaggerUi.serve,
-    swaggerUi.setup(especificacion, { customSiteTitle: 'Aruy API' })
-  );
-  app.get('/docs.json', (req, res) => res.json(especificacion));
-} catch (e) {
-  if (e.code !== 'MODULE_NOT_FOUND') throw e;
-  console.warn('Swagger desactivado: ejecuta "npm install swagger-ui-express" en arruy-backend');
-}
-
-app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
-
-// Errores que no atrapo ninguna ruta: siempre JSON, nunca el detalle interno
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
-  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'El cuerpo de la peticion es demasiado grande' });
-  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'El cuerpo no es un JSON valido' });
+process.on('uncaughtException', (err) => {
+  console.error('Error no capturado; el proceso se reinicia para quedar en un estado limpio:');
   registrarError(err);
-  res.status(500).json({ error: 'Error interno del servidor' });
+  setTimeout(() => process.exit(1), 200);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
+const servidor = app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
+
+// Detras del proxy de Render, Node cerraba las conexiones inactivas (a los 5 s) antes que el proxy,
+// y eso produce errores 502 intermitentes. Se mantienen abiertas mas tiempo que las del proxy.
+servidor.keepAliveTimeout = 65 * 1000;
+servidor.headersTimeout = 66 * 1000;
+
+// Evita que Supabase gratis pause el proyecto de las fotos por falta de actividad (ver almacenamiento.js)
+const avisarSupabase = () =>
+  mantenerActivo().then((r) => console.log(`Supabase (mantener activo): ${r.ok ? 'ok' : 'sin exito, ' + (r.estado || r.motivo)}`));
+setTimeout(avisarSupabase, 30 * 1000).unref();
+setInterval(avisarSupabase, 12 * 60 * 60 * 1000).unref();
+
+// Al desplegar, Render manda SIGTERM: se terminan las peticiones en curso y se cierra la base.
+function apagar(senal) {
+  console.log(`${senal}: cerrando el servidor...`);
+  servidor.close(() => {
+    pool.end().catch(() => {}).finally(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(0), 10 * 1000).unref();
+}
+process.on('SIGTERM', () => apagar('SIGTERM'));
+process.on('SIGINT', () => apagar('SIGINT'));

@@ -31,12 +31,20 @@ class SesionManager(
 
     fun tokenActual(): String? = token
 
-    /** Lee la sesión guardada. Si el token ya venció (dura 8 horas) se descarta. */
+    /** Lee la sesión guardada. Si el token ya venció (el servidor lo emite por 30 días) se descarta. */
     suspend fun cargar() {
-        val guardada = runCatching { almacen.leer() }.getOrNull()
+        val guardada = try {
+            almacen.leer()
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            RegistroSesion.aviso("Fallo al leer la sesion guardada (${e.javaClass.simpleName})")
+            null
+        }
         if (guardada == null) {
             _estado.value = EstadoSesion.SinSesion
         } else if (Jwt.estaVencido(guardada.token, ahoraMs())) {
+            RegistroSesion.aviso("La sesion guardada ya vencio; se descarta")
             runCatching { almacen.borrar() }
             _aviso.value = MENSAJE_VENCIDA
             _estado.value = EstadoSesion.SinSesion
@@ -75,6 +83,7 @@ class SesionManager(
     /** El servidor rechazó el token (401): se cierra la sesión y se avisa en el login. */
     fun expirar() {
         if (token == null) return
+        RegistroSesion.aviso("El servidor rechazo el token (401): se cierra la sesion")
         token = null
         _aviso.value = MENSAJE_VENCIDA
         _estado.value = EstadoSesion.SinSesion

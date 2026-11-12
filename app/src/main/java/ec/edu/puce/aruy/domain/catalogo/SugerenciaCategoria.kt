@@ -39,6 +39,9 @@ object SugerenciaCategoria {
         "beauty" to "Belleza", "makeup" to "Maquillaje", "skin" to "Piel", "face" to "Rostro", "eyelash" to "Pestañas"
     )
 
+    /** Palabras (en inglés) que ML Kit asocia con el oficio; las usa [ValidadorFotoOficio]. */
+    fun palabrasDe(categoria: CategoriaServicio): List<String> = PALABRAS[categoria].orEmpty()
+
     fun traducir(etiqueta: String): String =
         TRADUCCIONES[etiqueta.trim().lowercase(Locale.ROOT)] ?: etiqueta.trim()
 

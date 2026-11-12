@@ -46,7 +46,10 @@ android {
         }
     }
 
-    // Dónde corre el backend: en el emulador o en un celular físico de la misma red
+    // Dónde corre el backend. Por defecto, celular y producción usan el servidor en la nube (Render),
+    // así que cualquier APK compilado desde el repositorio abre en cualquier lugar con internet.
+    // Solo "emulador" apunta al servidor local del PC.
+    val urlNube = "https://aruy-api.onrender.com/"
     flavorDimensions += "entorno"
     productFlavors {
         create("emulador") {
@@ -56,14 +59,15 @@ android {
         }
         create("celular") {
             dimension = "entorno"
-            // En local.properties: aruy.baseUrl=http://192.168.0.10:3000/ (IP del PC en la red local)
-            val urlCelular = propiedadesLocales.getProperty("aruy.baseUrl") ?: "http://192.168.0.10:3000/"
+            // Por defecto, el servidor en la nube. Para probar contra el servidor local del PC con un celular físico,
+            // en local.properties: aruy.baseUrl=http://192.168.0.10:3000/ (IP del PC en la red local)
+            val urlCelular = propiedadesLocales.getProperty("aruy.baseUrl") ?: urlNube
             buildConfigField("String", "BASE_URL", "\"$urlCelular\"")
         }
         create("produccion") {
             dimension = "entorno"
-            // En local.properties: aruy.prodUrl=https://tu-backend.onrender.com/ (HTTPS obligatorio)
-            val urlProduccion = propiedadesLocales.getProperty("aruy.prodUrl") ?: ""
+            // Por defecto, el servidor en la nube. Se puede cambiar en local.properties: aruy.prodUrl=https://... (HTTPS obligatorio)
+            val urlProduccion = propiedadesLocales.getProperty("aruy.prodUrl") ?: urlNube
             buildConfigField("String", "BASE_URL", "\"$urlProduccion\"")
         }
     }
@@ -139,9 +143,9 @@ dependencies {
 // Evita subir a Play un AAB sin backend https o sin llave de firma
 gradle.taskGraph.whenReady {
     if (hasTask(":app:bundleProduccionRelease")) {
-        val url = propiedadesLocales.getProperty("aruy.prodUrl") ?: ""
+        val url = propiedadesLocales.getProperty("aruy.prodUrl") ?: "https://aruy-api.onrender.com/"
         if (!url.startsWith("https://")) {
-            throw GradleException("Define aruy.prodUrl=https://... en local.properties antes de generar el AAB")
+            throw GradleException("aruy.prodUrl en local.properties debe empezar con https:// antes de generar el AAB")
         }
         if (propiedadesFirma.isEmpty()) {
             throw GradleException("Falta keystore.properties en la raiz del proyecto (ver keystore.properties.example)")

@@ -7,7 +7,9 @@ import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
 import ec.edu.puce.aruy.data.repository.PrestadorRepository
 import ec.edu.puce.aruy.data.sesion.SesionManager
+import ec.edu.puce.aruy.domain.catalogo.ResultadoFoto
 import ec.edu.puce.aruy.domain.catalogo.SugerenciaCategoria
+import ec.edu.puce.aruy.domain.catalogo.ValidadorFotoOficio
 import ec.edu.puce.aruy.domain.model.EstadoSesion
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.Servicio
@@ -179,6 +181,16 @@ class MisServiciosViewModel(
             try {
                 val imagen = conversor.convertir(uri)
                 val etiquetas = etiquetador.etiquetar(imagen.paraEtiquetar)
+                // Confianza ante todo: una foto que claramente no es de este servicio no se sube
+                val servicio = actual?.servicio
+                val revision = ValidadorFotoOficio.evaluar(
+                    etiquetas, servicio?.categoria, servicio?.titulo.orEmpty(), servicio?.descripcion.orEmpty()
+                )
+                if (revision is ResultadoFoto.Rechazada) {
+                    _ui.update { it.copy(subiendoFoto = false) }
+                    _mensajes.tryEmit(revision.mensaje)
+                    return@launch
+                }
                 val foto = repositorio.subirFoto(servicioId, imagen.webp, etiquetas.map { it.texto })
                 _ui.update { estado ->
                     estado.copy(
@@ -188,9 +200,10 @@ class MisServiciosViewModel(
                         }
                     )
                 }
-                val categoria = SugerenciaCategoria.sugerir(etiquetas)
+                // Transparencia: se muestra lo que la IA vio en la foto
+                val detectado = etiquetas.take(3).joinToString(", ") { ValidadorFotoOficio.nombrePara(it) }
                 _mensajes.tryEmit(
-                    if (categoria != null) "Foto agregada a tu portafolio (${categoria.etiqueta})." else "Foto agregada a tu portafolio."
+                    if (detectado.isNotEmpty()) "Foto agregada a tu portafolio. Detectamos: $detectado." else "Foto agregada a tu portafolio."
                 )
             } catch (e: CancellationException) {
                 throw e

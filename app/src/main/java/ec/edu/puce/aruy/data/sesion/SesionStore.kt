@@ -44,8 +44,21 @@ class SesionStore(
 
     override suspend fun leer(): Sesion? {
         val p = contexto.almacenSesion.data.first()
-        val token = p[claveToken]?.let { cifrador.descifrar(it) } ?: return null
-        val u = runCatching { gson.fromJson(p[claveUsuario], UsuarioGuardado::class.java) }.getOrNull() ?: return null
+        val cifrado = p[claveToken]
+        if (cifrado == null) {
+            RegistroSesion.info("No hay sesion guardada (primer uso o se cerro la sesion)")
+            return null
+        }
+        val token = cifrador.descifrar(cifrado)
+        if (token == null) {
+            RegistroSesion.aviso("Hay una sesion guardada pero NO se pudo descifrar el token (clave del Keystore invalida o datos restaurados)")
+            return null
+        }
+        val u = runCatching { gson.fromJson(p[claveUsuario], UsuarioGuardado::class.java) }.getOrNull()
+        if (u == null) {
+            RegistroSesion.aviso("Hay token guardado pero los datos del usuario no se pudieron leer")
+            return null
+        }
         return Sesion(
             token = token,
             usuario = Usuario(

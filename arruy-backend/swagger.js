@@ -61,7 +61,7 @@ const paths = {
       summary: 'Crear una cuenta',
       description:
         'Si el rol es `PRESTADOR` también se crea su perfil, por eso son obligatorios `oficio_principal` y `zona_cobertura`. ' +
-        'Para `CONTRATANTE` se ignoran. Límite: 20 intentos cada 15 minutos.',
+        'Para `CONTRATANTE` se ignoran. Límite: 30 registros cada 15 minutos por red.',
       requestBody: {
         required: true,
         content: {
@@ -108,7 +108,7 @@ const paths = {
     post: {
       tags: ['Autenticación'],
       summary: 'Iniciar sesión',
-      description: 'Devuelve un token válido por 8 horas. Límite: 20 intentos cada 15 minutos.',
+      description: 'Devuelve un token válido por 30 días. Si hay 10 intentos fallidos seguidos con la misma cuenta desde la misma red, hay que esperar 15 minutos.',
       requestBody: {
         required: true,
         content: {
@@ -177,6 +177,34 @@ const paths = {
         401: errorRespuesta('Falta el token o no es válido'),
         403: errorRespuesta('Solo un PRESTADOR puede hacerlo'),
         409: errorRespuesta('Ya tienes un perfil de prestador'),
+      },
+    },
+  },
+
+  '/perfiles/activar': {
+    post: {
+      tags: ['Perfiles'],
+      summary: 'Quiero ofrecer servicios (con la misma cuenta)',
+      description:
+        'Para quien se registró como `CONTRATANTE` y ahora también quiere ofrecer servicios: **no hace falta crear otra cuenta**. ' +
+        'Crea su perfil de prestador y cambia su rol a `PRESTADOR`. Devuelve un **token nuevo** (el rol viaja dentro del token): ' +
+        'hay que guardarlo y dejar de usar el anterior. Un prestador puede seguir buscando, contactando y calificando a otros.',
+      security: conToken,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: ref('PerfilNuevo'),
+            example: { oficio_principal: 'Plomero', zona_cobertura: 'Norte de Quito', anios_experiencia: 3 },
+          },
+        },
+      },
+      responses: {
+        201: { description: 'Ahora ofreces servicios', content: json(ref('RespuestaAuth')) },
+        400: errorRespuesta('Datos inválidos'),
+        401: errorRespuesta('Falta el token o no es válido'),
+        404: errorRespuesta('Usuario no encontrado'),
+        409: errorRespuesta('Ya ofreces servicios con esta cuenta'),
       },
     },
   },
@@ -593,7 +621,7 @@ paths['/usuarios/yo'] = {
     description:
       'Borra de verdad la cuenta y sus datos: usuario, perfil de prestador, servicios con sus fotos y etiquetas, ' +
       'calificaciones (las que hizo y las que recibió) y suscripciones. Los archivos de las fotos se borran de Supabase. ' +
-      'No se puede deshacer. Su token deja de servir en cuanto la cuenta ya no existe.',
+      'No se puede deshacer. El token ya emitido sigue siendo válido hasta que venza, pero no sirve para nada: la cuenta y sus datos ya no existen.',
     security: conToken,
     responses: { 204: sinContenido('Cuenta eliminada'), 401: e401 },
   },
@@ -621,7 +649,7 @@ paths['/calificaciones'] = {
   post: {
     tags: ['Calificaciones'],
     summary: 'Calificar a un prestador',
-    description: 'Solo un `CONTRATANTE`, una vez por prestador, con puntuación entera de 1 a 5.',
+    description: 'Cualquier persona con cuenta (contratante o prestador), menos a sí misma: una vez por prestador, con puntuación entera de 1 a 5.',
     security: conToken,
     requestBody: {
       required: true,
@@ -636,7 +664,7 @@ paths['/calificaciones'] = {
       201: { description: 'Calificación guardada', content: json(ref('Calificacion')) },
       400: errorRespuesta('Datos inválidos'),
       401: e401,
-      403: errorRespuesta('Solo un CONTRATANTE puede calificar'),
+      403: errorRespuesta('No puedes calificar tu propio perfil'),
       404: errorRespuesta('Prestador no encontrado'),
       409: errorRespuesta('Ya calificaste a este prestador'),
     },
