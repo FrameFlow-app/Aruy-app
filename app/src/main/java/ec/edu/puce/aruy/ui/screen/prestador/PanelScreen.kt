@@ -8,8 +8,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.draw.clip
+import ec.edu.puce.aruy.ui.components.EncabezadoSaludo
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -49,6 +55,7 @@ import ec.edu.puce.aruy.ui.viewmodel.MisServiciosViewModel
 fun PanelScreen(
     viewModel: MisServiciosViewModel,
     nombre: String,
+    fotoUrl: String? = null,
     onNuevoServicio: () -> Unit,
     onVerServicios: () -> Unit,
     onEditar: (String) -> Unit
@@ -67,22 +74,17 @@ fun PanelScreen(
                 textoBoton = "Reintentar", onBoton = viewModel::cargar
             )
             else -> LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, top = Espacios.l, bottom = 112.dp),
+                verticalArrangement = Arrangement.spacedBy(Espacios.l)
             ) {
                 item {
-                    Column {
-                        Text(
-                            "Hola, ${nombre.trim().substringBefore(' ')}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.semantics { heading() }
-                        )
-                        Text(
-                            "Así va tu perfil.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    EncabezadoSaludo(
+                        nombre = nombre.trim().substringBefore(' '),
+                        fotoUrl = fotoUrl,
+                        subtitulo = "Así va tu perfil.",
+                        modifier = Modifier.semantics { heading() }
+                    )
                 }
                 item {
                     AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
@@ -123,7 +125,7 @@ fun PanelScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
-                            BotonRelleno("Nuevo servicio", onNuevoServicio, ancho = true)
+                            BotonRelleno("Nuevo servicio", onNuevoServicio, icono = Icons.Filled.Add, grande = true, ancho = true)
                         }
                     }
                 }
@@ -151,10 +153,18 @@ private fun CompletaTuPerfil(publicados: Int, fotos: Int) {
         }
         LinearProgressIndicator(
             progress = { hechos / pasos.size.toFloat() },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = Espacios.m).height(10.dp).clip(FormaPildora),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+            gapSize = 0.dp,
+            drawStopIndicator = {}
         )
         pasos.forEach { (texto, hecho) ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.padding(vertical = Espacios.xs),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Espacios.s)
+            ) {
                 Icon(
                     if (hecho) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
                     contentDescription = if (hecho) "Hecho" else "Pendiente",

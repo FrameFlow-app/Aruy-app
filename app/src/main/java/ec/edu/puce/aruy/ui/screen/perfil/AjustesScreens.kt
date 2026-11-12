@@ -3,6 +3,7 @@ package ec.edu.puce.aruy.ui.screen.perfil
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import ec.edu.puce.aruy.ui.components.BotonContorno
 import ec.edu.puce.aruy.ui.components.BotonPeligro
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
 import ec.edu.puce.aruy.ui.components.avisar
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.theme.ModoTema
 import ec.edu.puce.aruy.ui.theme.TamanoTexto
 import ec.edu.puce.aruy.ui.viewmodel.AjustesViewModel
@@ -62,49 +64,67 @@ fun AjustesScreen(viewModel: AjustesViewModel, onVolver: () -> Unit) {
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(Espacios.l),
+                verticalArrangement = Arrangement.spacedBy(Espacios.l)
             ) {
-                Subtitulo("Tema")
-                AruySegmentado(
-                    opciones = listOf("Sistema", "Claro", "Oscuro"),
-                    seleccionada = preferencias.modoTema.ordinal,
-                    onSeleccion = { viewModel.elegirTema(ModoTema.entries[it]) }
-                )
-                Text(
-                    "«Sistema» sigue el modo claro u oscuro de tu teléfono.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Subtitulo("Tamaño del texto")
-                AruySegmentado(
-                    opciones = listOf("Normal", "Grande", "Muy grande"),
-                    seleccionada = preferencias.tamanoTexto.ordinal,
-                    onSeleccion = { viewModel.elegirTamanoTexto(TamanoTexto.entries[it]) }
-                )
-                AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
-                    Text("Así se verá el texto en Aruy.", style = MaterialTheme.typography.bodyLarge)
+                AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                    Subtitulo("Tema")
+                    AruySegmentado(
+                        opciones = listOf("Sistema", "Claro", "Oscuro"),
+                        seleccionada = preferencias.modoTema.ordinal,
+                        onSeleccion = { viewModel.elegirTema(ModoTema.entries[it]) },
+                        modifier = Modifier.padding(top = Espacios.m)
+                    )
+                    Text(
+                        "«Sistema» sigue el modo claro u oscuro de tu teléfono.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Espacios.m)
+                    )
                 }
 
-                Subtitulo("Movimiento")
-                AruyInterruptor(
-                    titulo = "Reducir animaciones",
-                    activado = preferencias.reducirAnimaciones,
-                    onCambio = viewModel::reducirAnimaciones,
-                    descripcion = "Quita los brillos y movimientos de las pantallas de carga."
-                )
+                AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                    Subtitulo("Tamaño del texto")
+                    AruySegmentado(
+                        opciones = listOf("Normal", "Grande", "Muy grande"),
+                        seleccionada = preferencias.tamanoTexto.ordinal,
+                        onSeleccion = { viewModel.elegirTamanoTexto(TamanoTexto.entries[it]) },
+                        modifier = Modifier.padding(top = Espacios.m)
+                    )
+                    Text(
+                        "Así se verá el texto en Aruy.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .padding(top = Espacios.m)
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium)
+                            .padding(Espacios.l)
+                    )
+                }
 
-                Subtitulo("Datos guardados")
-                BotonContorno(
-                    "Borrar fotos en caché",
-                    onClick = {
-                        contexto.imageLoader.memoryCache?.clear()
-                        contexto.imageLoader.diskCache?.clear()
-                        alcance.launch { snackbar.avisar("Listo. La próxima vez se descargan de nuevo.") }
-                    },
-                    ancho = true
-                )
+                AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                    Subtitulo("Movimiento")
+                    AruyInterruptor(
+                        titulo = "Reducir animaciones",
+                        activado = preferencias.reducirAnimaciones,
+                        onCambio = viewModel::reducirAnimaciones,
+                        descripcion = "Quita los brillos y movimientos de las pantallas de carga."
+                    )
+                }
+
+                AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                    Subtitulo("Datos guardados")
+                    BotonContorno(
+                        "Borrar fotos en caché",
+                        onClick = {
+                            contexto.imageLoader.memoryCache?.clear()
+                            contexto.imageLoader.diskCache?.clear()
+                            alcance.launch { snackbar.avisar("Listo. La próxima vez se descargan de nuevo.") }
+                        },
+                        modifier = Modifier.padding(top = Espacios.m),
+                        ancho = true
+                    )
+                }
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
@@ -123,8 +143,8 @@ fun PermisosScreen(onVolver: () -> Unit) {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.m)
         ) {
             Text("Aruy no necesita permisos especiales.", style = MaterialTheme.typography.bodyLarge)
             TarjetaPermiso("Cámara", "Para la foto de un trabajo se abre la app de cámara de tu teléfono. Aruy no tiene acceso a la cámara por su cuenta.")
@@ -146,9 +166,9 @@ fun PermisosScreen(onVolver: () -> Unit) {
 
 @Composable
 private fun TarjetaPermiso(titulo: String, texto: String) {
-    AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
         Text(titulo, style = MaterialTheme.typography.titleMedium)
-        Text(texto, style = MaterialTheme.typography.bodyMedium)
+        Text(texto, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Espacios.xs))
     }
 }
 
@@ -160,8 +180,8 @@ fun PrivacidadScreen(onVolver: () -> Unit, onPermisos: () -> Unit, onBaja: () ->
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.m)
         ) {
             AruyTarjeta(tipo = TipoTarjeta.ACENTO, modifier = Modifier.fillMaxWidth()) {
                 Text("Tu información es tuya", style = MaterialTheme.typography.titleMedium)
@@ -183,7 +203,7 @@ fun PrivacidadScreen(onVolver: () -> Unit, onPermisos: () -> Unit, onBaja: () ->
             )
             Dato("Tu ubicación", "Aruy no la usa ni la guarda.")
             BotonContorno("Revisar permisos", onPermisos, ancho = true)
-            BotonPeligro("Eliminar mi cuenta", onBaja, soloTexto = true)
+            BotonPeligro("Eliminar mi cuenta", onBaja, modifier = Modifier.fillMaxWidth(), soloTexto = true)
         }
     }
 }
@@ -192,6 +212,6 @@ fun PrivacidadScreen(onVolver: () -> Unit, onPermisos: () -> Unit, onBaja: () ->
 private fun Dato(titulo: String, texto: String) {
     AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
         Text(titulo, style = MaterialTheme.typography.titleMedium)
-        Text(texto, style = MaterialTheme.typography.bodyMedium)
+        Text(texto, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Espacios.xs))
     }
 }

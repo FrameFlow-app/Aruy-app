@@ -65,12 +65,16 @@ fun NavegacionFlotante(
             horizontalArrangement = Arrangement.spacedBy(Espacios.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Con 5 destinos la etiqueta solo cabe en el seleccionado; el resto va solo con ícono
+            val soloSeleccionadoConEtiqueta = items.size > 4
             items.forEach { item ->
+                val seleccionado = rutaActual == item.ruta
                 ElementoFlotante(
+                    mostrarEtiqueta = !soloSeleccionadoConEtiqueta || seleccionado,
                     item = item,
                     seleccionado = rutaActual == item.ruta,
                     onClick = { onSeleccionar(item) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(if (soloSeleccionadoConEtiqueta && seleccionado) 2.2f else 1f)
                 )
             }
         }
@@ -80,6 +84,7 @@ fun NavegacionFlotante(
 @Composable
 private fun ElementoFlotante(
     item: ItemNavegacionFlotante,
+    mostrarEtiqueta: Boolean,
     seleccionado: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -104,14 +109,22 @@ private fun ElementoFlotante(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(item.icono, contentDescription = null, tint = tinta, modifier = Modifier.size(24.dp))
-        Text(
-            item.titulo,
-            style = MaterialTheme.typography.labelMedium,
-            color = tinta,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
+        // Sin etiqueta visible, el ícono conserva el nombre del destino para TalkBack
+        Icon(
+            item.icono,
+            contentDescription = if (mostrarEtiqueta) null else item.titulo,
+            tint = tinta,
+            modifier = Modifier.size(24.dp)
         )
+        if (mostrarEtiqueta) {
+            Text(
+                item.titulo,
+                style = MaterialTheme.typography.labelMedium,
+                color = tinta,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

@@ -383,6 +383,7 @@ fun AruyApp(contenedor: AppContainer) {
                         PanelScreen(
                             viewModel = misServicios,
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre.orEmpty(),
+                            fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
                             onNuevoServicio = { navController.navigate(Rutas.editor()) },
                             onVerServicios = { navController.navigate(Rutas.MIS_SERVICIOS) },
                             onEditar = { navController.navigate(Rutas.editor(it)) }

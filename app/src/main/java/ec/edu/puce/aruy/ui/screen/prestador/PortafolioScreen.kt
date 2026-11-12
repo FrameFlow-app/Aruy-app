@@ -37,7 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.theme.Espacios
 import coil.compose.AsyncImage
 import ec.edu.puce.aruy.ui.components.AruyHoja
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
@@ -87,8 +89,8 @@ fun PortafolioScreen(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(start = Espacios.l, end = Espacios.l, top = Espacios.l, bottom = 112.dp),
+                verticalArrangement = Arrangement.spacedBy(Espacios.xl)
             ) {
                 Text(
                     "Las fotos de tus trabajos generan confianza. Cada una se analiza en tu teléfono y se sube en WebP.",
@@ -108,24 +110,38 @@ fun PortafolioScreen(
                     texto = "Agregar foto",
                     onClick = { elegirServicio = true },
                     icono = Icons.Filled.AddAPhoto,
+                    grande = true,
                     ancho = true,
                     habilitado = !ui.subiendoFoto
                 )
                 ui.servicios.forEach { propio ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(propio.servicio.titulo, style = MaterialTheme.typography.titleMedium)
+                    Column(verticalArrangement = Arrangement.spacedBy(Espacios.m)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Espacios.m),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                propio.servicio.titulo,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Pastilla("${propio.fotos.size} de 3")
+                        }
                         if (propio.fotos.isEmpty()) {
                             Text("Este servicio todavía no tiene fotos.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         propio.fotos.chunked(3).forEach { fila ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
                                 fila.forEach { foto ->
                                     Box(Modifier.weight(1f).aspectRatio(1f)) {
                                         AsyncImage(
                                             model = foto.url,
                                             contentDescription = foto.descripcion ?: "Foto de ${propio.servicio.titulo}",
                                             contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium)
+                                            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.large)
                                         )
                                         BotonQuitarFoto(
                                             onClick = { porQuitar = propio.servicio.id to foto.id },
@@ -148,11 +164,14 @@ fun PortafolioScreen(
             ui.servicios.forEach { propio ->
                 AruyTarjeta(
                     onClick = { destino = propio.servicio.id; elegirServicio = false; hojaFoto = true },
-                    tipo = TipoTarjeta.CONTORNO,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().padding(bottom = Espacios.m)
                 ) {
                     Text(propio.servicio.titulo, style = MaterialTheme.typography.titleMedium)
-                    Text("${propio.fotos.size} de 3 fotos", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "${propio.fotos.size} de 3 fotos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
