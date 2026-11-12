@@ -1,6 +1,10 @@
 # Render (plan gratuito) duerme la instancia tras ~15 min sin trafico.
-# Este ping cada 10 min la mantiene despierta, y con ello tambien sigue
-# corriendo dentro del servidor el keep-alive de Supabase.
+# Este ping cada 5 min (el minimo que permite GitHub) la mantiene despierta,
+# y con ello tambien sigue corriendo dentro del servidor el keep-alive de
+# Supabase.
+# Nota: GitHub ejecuta los workflows programados en "mejor esfuerzo" (pueden
+# retrasarse u omitirse), por eso un monitor externo como UptimeRobot es un
+# complemento mas confiable.
 # Nota: GitHub solo ejecuta `schedule` desde la rama por defecto y puede
 # retrasarlo unos minutos.
 # Nota: GitHub desactiva los workflows programados tras 60 dias sin
@@ -9,7 +13,7 @@ name: Mantener activo el backend (Render)
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
