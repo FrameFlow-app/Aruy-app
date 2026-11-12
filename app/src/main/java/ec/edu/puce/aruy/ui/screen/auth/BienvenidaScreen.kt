@@ -1,6 +1,12 @@
 package ec.edu.puce.aruy.ui.screen.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,11 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import ec.edu.puce.aruy.ui.components.BotonContorno
 import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.BotonTexto
+import ec.edu.puce.aruy.ui.components.BotonTonal
 import ec.edu.puce.aruy.ui.components.MarcaAruy
 import ec.edu.puce.aruy.ui.components.Tejido
+import ec.edu.puce.aruy.ui.theme.Espacios
 
 /** Bienvenida: crear cuenta, iniciar sesión o explorar sin cuenta (`auth.js`). */
 @Composable
@@ -33,38 +40,56 @@ fun BienvenidaScreen(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = Espacios.xxl)
+            .padding(top = Espacios.l, bottom = Espacios.l)
     ) {
-        Tejido(Modifier.fillMaxWidth())
-        MarcaAruy(tamano = 56.dp, modifier = Modifier.padding(top = 16.dp))
-        Text(
-            "Aruy",
-            style = MaterialTheme.typography.displayLarge,
-            modifier = Modifier.semantics { heading() }
-        )
-        Text(
-            "Encuentra a quien necesitas, cerca de ti.",
-            style = MaterialTheme.typography.titleLarge
-        )
-        Text(
-            "Conecta a personas que ofrecen un servicio con quienes lo necesitan en Quito: " +
-                "plomería, electricidad, belleza y más. Ves su trabajo y los contactas directo por WhatsApp.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        // Zona superior: se desplaza si el contenido no cabe (fuente grande).
         Column(
-            modifier = Modifier.padding(top = 16.dp),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(Espacios.m)
+        ) {
+            Tejido(Modifier.fillMaxWidth())
+            Spacer(Modifier.height(Espacios.l))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(Espacios.l)
+            ) { MarcaAruy(tamano = 52.dp) }
+            Text(
+                "Aruy",
+                style = MaterialTheme.typography.displayLarge,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                "Encuentra a quien necesitas, cerca de ti.",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Text(
+                "Conecta a personas que ofrecen un servicio con quienes lo necesitan en Quito: " +
+                    "plomería, electricidad, belleza y más. Ves su trabajo y los contactas directo por WhatsApp.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        // Acciones ancladas abajo.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Espacios.m),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(Espacios.s)
         ) {
             Text(
                 "¿Quieres crear una cuenta o ya tienes una?",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             BotonRelleno("Crear cuenta", onCrearCuenta, grande = true, ancho = true)
-            BotonContorno("Iniciar sesión", onIniciarSesion, grande = true, ancho = true)
+            BotonTonal("Iniciar sesión", onIniciarSesion, grande = true, ancho = true)
             BotonTexto("Explorar sin cuenta", onExplorar)
         }
     }

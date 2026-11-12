@@ -1,6 +1,8 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.theme.Superposiciones
+import ec.edu.puce.aruy.ui.components.AruyTarjeta
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -78,8 +80,8 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                         .weight(1f)
                         .imePadding()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = Espacios.l, vertical = Espacios.s),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.l)
                 ) {
                     FotoDePerfil(
                         nombre = ui.nombre,
@@ -88,6 +90,8 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                         onCambiar = { hojaFoto = true },
                         onQuitar = viewModel::quitarFoto
                     )
+                    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                      Column(verticalArrangement = Arrangement.spacedBy(Espacios.l)) {
                     AruyCampo(
                         valor = ui.nombre, onValor = viewModel::cambiarNombre, etiqueta = "Nombre completo",
                         error = ui.errorNombre, maxCaracteres = Validaciones.NOMBRE_MAX,
@@ -105,8 +109,12 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                             ayuda = "El correo no se puede cambiar desde la app.", habilitado = false
                         )
                     }
+                      }
+                    }
 
                     if (ui.esPrestador) {
+                      AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(Espacios.l)) {
                         AruyCampo(
                             valor = ui.oficio, onValor = viewModel::cambiarOficio, etiqueta = "Oficio principal",
                             placeholder = "Ejemplo: Plomero", error = ui.errorOficio,
@@ -128,12 +136,15 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                             error = ui.errorAnios,
                             teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
                         )
+                        }
+                      }
                     }
 
                     BotonRelleno(
                         texto = if (ui.guardando) "Guardando…" else "Guardar cambios",
                         onClick = viewModel::guardar, grande = true, ancho = true, cargando = ui.guardando
                     )
+                    Spacer(Modifier.height(Espacios.l))
                 }
             }
         }
@@ -157,7 +168,7 @@ private fun FotoDePerfil(
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .padding(top = 4.dp)
+                .padding(top = Espacios.xs)
                 .clip(CircleShape)
                 .clickable(enabled = !subiendo, role = Role.Button, onClickLabel = "Cambiar foto de perfil", onClick = onCambiar)
         ) {
@@ -181,7 +192,7 @@ private fun FotoDePerfil(
                 Icon(Icons.Filled.PhotoCamera, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Espacios.s))
         Text(
             if (subiendo) "Subiendo tu foto…" else "La foto se guarda al elegirla, sin tocar «Guardar cambios».",
             style = MaterialTheme.typography.bodySmall,

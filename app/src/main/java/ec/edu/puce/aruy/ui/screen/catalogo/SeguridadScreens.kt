@@ -28,6 +28,7 @@ import ec.edu.puce.aruy.ui.components.EstadoVacio
 import ec.edu.puce.aruy.ui.components.Pastilla
 import ec.edu.puce.aruy.ui.components.TipoPastilla
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.viewmodel.ActividadLocalViewModel
 
 /** Personas bloqueadas (`bloqueados` en `ajustes.js`): no se ven sus servicios ni su perfil. */
@@ -44,8 +45,8 @@ fun BloqueadosScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit) {
             )
         } else {
             LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(Espacios.l),
+                verticalArrangement = Arrangement.spacedBy(Espacios.m)
             ) {
                 item {
                     Text(
@@ -55,12 +56,12 @@ fun BloqueadosScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit) {
                     )
                 }
                 items(bloqueados, key = { it.prestadorId }) { bloqueado ->
-                    AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                    AruyTarjeta(tipo = TipoTarjeta.NORMAL, modifier = Modifier.fillMaxWidth()) {
                         Text(bloqueado.nombre, style = MaterialTheme.typography.titleMedium)
                         Text(
                             "Bloqueada ${TiempoRelativo.texto(bloqueado.fecha)}",
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = Espacios.m)
                         )
                         BotonContorno("Desbloquear", { actividad.desbloquear(bloqueado.prestadorId) })
                     }
@@ -86,8 +87,8 @@ fun MisReportesScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit, 
             )
         } else {
             LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(Espacios.l),
+                verticalArrangement = Arrangement.spacedBy(Espacios.m)
             ) {
                 item {
                     AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
@@ -98,12 +99,12 @@ fun MisReportesScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit, 
                     }
                 }
                 items(reportes, key = { it.id }) { reporte ->
-                    AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                    AruyTarjeta(tipo = TipoTarjeta.NORMAL, modifier = Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(reporte.objetivo, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             Pastilla("Guardado", tipo = TipoPastilla.NEUTRA)
                         }
-                        Text(reporte.motivo, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
+                        Text(reporte.motivo, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Espacios.xs))
                         reporte.detalle?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                         Text(
                             TiempoRelativo.texto(reporte.fecha),
@@ -132,8 +133,8 @@ fun NormasScreen(onVolver: () -> Unit, onVerReportes: () -> Unit) {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.m)
         ) {
             Text(
                 "Aruy funciona con confianza. Estas son las reglas para cuidarla.",
@@ -142,7 +143,7 @@ fun NormasScreen(onVolver: () -> Unit, onVerReportes: () -> Unit) {
             NORMAS.forEach { (titulo, texto) ->
                 AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
                     Text(titulo, style = MaterialTheme.typography.titleMedium)
-                    Text(texto, style = MaterialTheme.typography.bodyMedium)
+                    Text(texto, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Espacios.xs))
                 }
             }
             BotonContorno("Ver mis reportes", onVerReportes, ancho = true)

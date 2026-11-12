@@ -16,8 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.WorkOff
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import ec.edu.puce.aruy.ui.components.BotonCircular
+import ec.edu.puce.aruy.ui.components.VarianteCircular
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -64,22 +68,23 @@ fun FilaServicioPropio(
     modifier: Modifier = Modifier,
     menu: (@Composable () -> Unit)? = null
 ) {
-    Card(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(Espacios.m),
+            horizontalArrangement = Arrangement.spacedBy(Espacios.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val portada = propio.fotos.firstOrNull()?.url
             Box(
                 Modifier
-                    .size(72.dp)
-                    .clip(MaterialTheme.shapes.medium)
+                    .size(80.dp)
+                    .clip(MaterialTheme.shapes.large)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
@@ -132,8 +137,8 @@ fun MisServiciosScreen(
                 onBoton = onNuevo
             )
             else -> LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, top = Espacios.l, bottom = 176.dp),
+                verticalArrangement = Arrangement.spacedBy(Espacios.m)
             ) {
                 items(ui.servicios, key = { it.servicio.id }) { propio ->
                     FilaServicioPropio(
@@ -141,9 +146,12 @@ fun MisServiciosScreen(
                         onClick = { onEditar(propio.servicio.id) },
                         menu = {
                             Box {
-                                IconButton(onClick = { menuAbierto = propio.servicio.id }) {
-                                    Icon(Icons.Filled.MoreVert, contentDescription = "Opciones de ${propio.servicio.titulo}")
-                                }
+                                BotonCircular(
+                                    icono = Icons.Filled.MoreVert,
+                                    descripcion = "Opciones de ${propio.servicio.titulo}",
+                                    onClick = { menuAbierto = propio.servicio.id },
+                                    variante = VarianteCircular.TONAL
+                                )
                                 DropdownMenu(expanded = menuAbierto == propio.servicio.id, onDismissRequest = { menuAbierto = null }) {
                                     DropdownMenuItem(text = { Text("Editar") }, onClick = { menuAbierto = null; onEditar(propio.servicio.id) })
                                     DropdownMenuItem(
@@ -176,7 +184,8 @@ fun MisServiciosScreen(
                 onClick = onNuevo,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = { Text("Nuevo servicio") },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                shape = FormaPildora,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(start = Espacios.l, end = Espacios.l, top = Espacios.l, bottom = 96.dp)
             )
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))

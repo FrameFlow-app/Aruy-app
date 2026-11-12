@@ -78,10 +78,15 @@ fun LoginScreen(
                 .weight(1f)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text("Entra con tu correo y tu contraseña.", style = MaterialTheme.typography.bodyLarge)
+            Text("Bienvenido de vuelta", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Entra con tu correo y tu contraseña.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             aviso?.let { mensaje ->
                 AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
