@@ -145,7 +145,7 @@ fun RegistroScreen(
                 )
                 TarjetaRol(
                     titulo = "Quiero ofrecer mis servicios",
-                    texto = "Publica lo que haces, sube fotos de tus trabajos y recibe clientes cerca de ti.",
+                    texto = "Publica lo que haces, sube fotos de tus trabajos y recibe clientes. Con la misma cuenta también puedes buscar y contratar.",
                     seleccionada = rol == RolUsuario.PRESTADOR,
                     onClick = { rol = RolUsuario.PRESTADOR }
                 )

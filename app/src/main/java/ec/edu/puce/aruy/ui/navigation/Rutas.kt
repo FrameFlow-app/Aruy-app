@@ -95,6 +95,8 @@ fun itemsDeNavegacion(rol: RolNavegacion): List<ItemNavegacion> = when (rol) {
         ItemNavegacion(Rutas.PANEL, "Panel", Icons.Filled.Dashboard),
         ItemNavegacion(Rutas.MIS_SERVICIOS, "Servicios", Icons.Filled.Work),
         ItemNavegacion(Rutas.PORTAFOLIO, "Portafolio", Icons.Filled.Image),
+        // Con la misma cuenta, el prestador también explora el catálogo, contacta y califica a otros
+        ItemNavegacion(Rutas.INICIO, "Explorar", Icons.Filled.Search),
         ItemNavegacion(Rutas.PERFIL, "Perfil", Icons.Filled.Person)
     )
 }

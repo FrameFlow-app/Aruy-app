@@ -10,7 +10,9 @@ import ec.edu.puce.aruy.data.repository.DatosServicio
 import ec.edu.puce.aruy.data.repository.PrestadorRepository
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.catalogo.EtiquetaFoto
+import ec.edu.puce.aruy.domain.catalogo.ResultadoFoto
 import ec.edu.puce.aruy.domain.catalogo.SugerenciaCategoria
+import ec.edu.puce.aruy.domain.catalogo.ValidadorFotoOficio
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.EstadoSesion
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
@@ -183,6 +185,13 @@ class EditorServicioViewModel(
             try {
                 val imagen = conversor.convertir(uri)
                 val etiquetas = etiquetador.etiquetar(imagen.paraEtiquetar)
+                // Confianza ante todo: una foto que claramente no es de un trabajo no se agrega al portafolio
+                val revision = ValidadorFotoOficio.evaluar(etiquetas, _ui.value.categoria, _ui.value.titulo, _ui.value.descripcion)
+                if (revision is ResultadoFoto.Rechazada) {
+                    _ui.update { it.copy(analizandoFoto = false, etiquetasUltimaFoto = etiquetas) }
+                    _mensajes.tryEmit(revision.mensaje)
+                    return@launch
+                }
                 val sugerida = SugerenciaCategoria.sugerir(etiquetas)
                 val pendiente = FotoPendiente(siguienteIdFoto++, imagen, etiquetas)
                 _ui.update {
