@@ -221,6 +221,7 @@ fun AruyApp(contenedor: AppContainer) {
                             catalogo = catalogo,
                             actividad = actividad,
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre,
+                            fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
                             invitado = rol == RolNavegacion.INVITADO,
                             onBuscar = { navController.navigate(Rutas.buscar(enfocar = true)) },
                             onCategoria = { navController.navigate(Rutas.buscar(it)) },

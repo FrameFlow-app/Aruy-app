@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -121,8 +122,8 @@ private fun DatosOcultos(modifier: Modifier = Modifier) {
 }
 
 /**
- * Tarjeta grande del carrusel de Inicio: foto con esquinas muy redondeadas, título y precio en una
- * fila, y debajo el prestador con su calificación. El corazón flotante solo aparece si hay [onFavorito].
+ * Tarjeta grande del carrusel de Inicio: foto con esquinas muy redondeadas, título a ancho completo,
+ * prestador, y calificación con precio. El corazón flotante solo aparece si hay [onFavorito].
  */
 @Composable
 fun TarjetaServicio(
@@ -146,7 +147,7 @@ fun TarjetaServicio(
                 item.id, item.servicio.categoria, cargarPortada,
                 Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f),
+                    .aspectRatio(4f / 3f),
                 forma = MaterialTheme.shapes.large
             )
             if (onFavorito != null) {
@@ -173,27 +174,27 @@ fun TarjetaServicio(
                 )
                 DatosOcultos()
             } else {
-                Row(
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(Espacios.s)
-                ) {
-                    Text(
-                        item.servicio.titulo,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        textoPrecio(item.servicio.precioReferencial),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Text(
+                    item.servicio.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Text(
                     item.nombrePrestador,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                // Precio y calificación en líneas propias (sin FlowRow: sus medidas intrínsecas fallan
+                // dentro de Row + IntrinsicSize.Max y recortaban el precio)
+                Text(
+                    textoPrecio(item.servicio.precioReferencial),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
