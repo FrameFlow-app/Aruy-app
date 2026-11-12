@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,16 +30,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import ec.edu.puce.aruy.ui.theme.AruyTheme
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 import ec.edu.puce.aruy.ui.theme.FuenteTitulos
 import java.util.Locale
 
@@ -56,27 +59,29 @@ fun AruyTarjeta(
     val esquema = MaterialTheme.colorScheme
     val (fondo, borde) = when (tipo) {
         TipoTarjeta.NORMAL -> esquema.surfaceContainerLow to null
-        TipoTarjeta.CONTORNO -> esquema.surface to BorderStroke(1.5.dp, esquema.outlineVariant)
+        TipoTarjeta.CONTORNO -> esquema.surface to BorderStroke(1.dp, esquema.outlineVariant)
         TipoTarjeta.ACENTO -> esquema.primaryContainer to null
         TipoTarjeta.ADVERTENCIA -> colores.advertenciaContainer to null
         TipoTarjeta.ERROR -> esquema.errorContainer to null
         TipoTarjeta.OK -> colores.okContainer to null
     }
     val colorCards = CardDefaults.cardColors(containerColor = fondo)
+    val elevacion = CardDefaults.cardElevation(defaultElevation = if (tipo == TipoTarjeta.NORMAL) 1.dp else 0.dp)
     val forma = MaterialTheme.shapes.large
-    val relleno = Modifier.padding(16.dp)
+    val relleno = Modifier.padding(Espacios.xl)
     if (onClick != null) {
         Card(
-            onClick = onClick, modifier = modifier, shape = forma, colors = colorCards, border = borde
+            onClick = onClick, modifier = modifier, shape = forma, colors = colorCards,
+            elevation = elevacion, border = borde
         ) { Column(relleno, content = content) }
     } else {
-        Card(modifier = modifier, shape = forma, colors = colorCards, border = borde) {
+        Card(modifier = modifier, shape = forma, colors = colorCards, elevation = elevacion, border = borde) {
             Column(relleno, content = content)
         }
     }
 }
 
-/** Chip de filtro de 48 dp; activo = fondo `secondaryContainer` con marca de verificación. */
+/** Chip de filtro en píldora: activo = relleno `primary`; inactivo = superficie suave sin borde. */
 @Composable
 fun AruyChip(
     texto: String,
@@ -84,23 +89,20 @@ fun AruyChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val esquema = MaterialTheme.colorScheme
     FilterChip(
         selected = seleccionado,
         onClick = onClick,
         label = { Text(texto, style = MaterialTheme.typography.labelLarge) },
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = FormaPildora,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+            containerColor = esquema.surfaceContainerHigh,
+            labelColor = esquema.onSurface,
+            selectedContainerColor = esquema.primary,
+            selectedLabelColor = esquema.onPrimary
         ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = seleccionado,
-            borderColor = MaterialTheme.colorScheme.outline,
-            selectedBorderColor = Color.Transparent,
-            borderWidth = 1.5.dp
-        )
+        border = null
     )
 }
 
@@ -220,6 +222,40 @@ fun TituloSeccion(texto: String, modifier: Modifier = Modifier, accion: (@Compos
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(texto, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { })
+        accion?.invoke()
+    }
+}
+
+/** Encabezado de Inicio: avatar a la izquierda, "Hola, {nombre}", subtítulo y una acción al final. */
+@Composable
+fun EncabezadoSaludo(
+    nombre: String,
+    fotoUrl: String?,
+    subtitulo: String,
+    modifier: Modifier = Modifier,
+    accion: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacios.m)
+    ) {
+        AruyAvatar(nombre = nombre, tamano = 52.dp, fotoUrl = fotoUrl)
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Hola, $nombre",
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                subtitulo,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         accion?.invoke()
     }
 }

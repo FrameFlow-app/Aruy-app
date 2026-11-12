@@ -17,8 +17,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -48,6 +46,8 @@ import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.EstadoSesion
 import ec.edu.puce.aruy.domain.model.RolUsuario
 import ec.edu.puce.aruy.ui.components.HojaCuentaRequerida
+import ec.edu.puce.aruy.ui.components.ItemNavegacionFlotante
+import ec.edu.puce.aruy.ui.components.NavegacionFlotante
 import ec.edu.puce.aruy.ui.screen.perfil.AjustesScreen
 import ec.edu.puce.aruy.ui.screen.perfil.AruyProScreen
 import ec.edu.puce.aruy.ui.screen.perfil.BajaCuentaScreen
@@ -154,27 +154,22 @@ fun AruyApp(contenedor: AppContainer) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (rutaActual in Rutas.CON_BARRA && items.isNotEmpty()) {
-                NavigationBar {
-                    items.forEach { item ->
-                        NavigationBarItem(
-                            selected = rutaActual == item.ruta,
-                            onClick = {
-                                if (item.ruta == Rutas.REGISTRO) {
-                                    // "Crear cuenta" del invitado abre el registro, no es una pestaña
-                                    navController.navigate(Rutas.REGISTRO)
-                                } else {
-                                    navController.navigate(item.ruta) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            },
-                            icon = { Icon(item.icono, contentDescription = null) },
-                            label = { Text(item.titulo) }
-                        )
+                NavegacionFlotante(
+                    items = items.map { ItemNavegacionFlotante(it.ruta, it.titulo, it.icono) },
+                    rutaActual = rutaActual,
+                    onSeleccionar = { item ->
+                        if (item.ruta == Rutas.REGISTRO) {
+                            // "Crear cuenta" del invitado abre el registro, no es una pestaña
+                            navController.navigate(Rutas.REGISTRO)
+                        } else {
+                            navController.navigate(item.ruta) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
-                }
+                )
             }
         }
     ) { relleno ->
@@ -226,6 +221,7 @@ fun AruyApp(contenedor: AppContainer) {
                             catalogo = catalogo,
                             actividad = actividad,
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre,
+                            fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
                             invitado = rol == RolNavegacion.INVITADO,
                             onBuscar = { navController.navigate(Rutas.buscar(enfocar = true)) },
                             onCategoria = { navController.navigate(Rutas.buscar(it)) },

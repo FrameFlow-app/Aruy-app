@@ -75,6 +75,6 @@ fun BarraSuperior(titulo: String, onVolver: (() -> Unit)?, modifier: Modifier = 
                 }
             }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
     )
 }

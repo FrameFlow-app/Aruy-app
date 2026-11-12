@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -163,10 +164,10 @@ private fun FotoDePerfil(
             AruyAvatar(nombre, tamano = 104.dp, fotoUrl = fotoUrl)
             if (subiendo) {
                 Box(
-                    Modifier.size(104.dp).background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                    Modifier.size(104.dp).background(Superposiciones.velo, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(Modifier.size(32.dp), color = Color.White, strokeWidth = 3.dp)
+                    CircularProgressIndicator(Modifier.size(32.dp), color = Superposiciones.tintaSobreVelo, strokeWidth = 3.dp)
                 }
             }
             Box(

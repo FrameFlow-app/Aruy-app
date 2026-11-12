@@ -22,13 +22,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.foundation.layout.Spacer
 import ec.edu.puce.aruy.ui.theme.AruyTheme
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 
-// Botones del prototipo (components.css): píldora de 48 dp, "grande" de 56 dp
+// Botones del rediseño: píldora de 52 dp, "grande" de 56 dp
 
-private val AlturaNormal = 48.dp
+private val AlturaNormal = 52.dp
 private val AlturaGrande = 56.dp
-private val RellenoBoton = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
+private val AlturaMinimaToque = 48.dp
+private val RellenoBoton = PaddingValues(horizontal = Espacios.xxl, vertical = 0.dp)
 
 @Composable
 private fun ContenidoBoton(
@@ -46,7 +54,7 @@ private fun ContenidoBoton(
     } else if (icono != null) {
         Icon(icono, contentDescription = null, modifier = Modifier.size(20.dp))
     }
-    if (cargando || icono != null) androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+    if (cargando || icono != null) Spacer(Modifier.size(Espacios.s))
     Text(texto, style = MaterialTheme.typography.labelLarge)
 }
 
@@ -79,15 +87,12 @@ fun BotonTonal(
     ancho: Boolean = false,
     habilitado: Boolean = true
 ) {
-    Button(
+    FilledTonalButton(
         onClick = onClick,
         enabled = habilitado,
         modifier = modifier.botonMedidas(grande, ancho),
-        contentPadding = RellenoBoton,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
+        shape = FormaPildora,
+        contentPadding = RellenoBoton
     ) { ContenidoBoton(texto, icono, false, MaterialTheme.colorScheme.onSecondaryContainer) }
 }
 
@@ -105,6 +110,7 @@ fun BotonSuave(
         onClick = onClick,
         enabled = habilitado,
         modifier = modifier.botonMedidas(grande, ancho),
+        shape = FormaPildora,
         contentPadding = RellenoBoton,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -127,8 +133,9 @@ fun BotonContorno(
         onClick = onClick,
         enabled = habilitado,
         modifier = modifier.botonMedidas(grande, ancho),
+        shape = FormaPildora,
         contentPadding = RellenoBoton,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) { ContenidoBoton(texto, icono, false, MaterialTheme.colorScheme.primary) }
 }
 
@@ -142,7 +149,8 @@ fun BotonTexto(
     TextButton(
         onClick = onClick,
         enabled = habilitado,
-        modifier = modifier.heightIn(min = AlturaNormal)
+        modifier = modifier.heightIn(min = AlturaMinimaToque),
+        shape = FormaPildora
     ) { Text(texto, style = MaterialTheme.typography.labelLarge) }
 }
 
@@ -159,12 +167,13 @@ fun BotonWhatsApp(
         onClick = onClick,
         enabled = habilitado,
         modifier = modifier.botonMedidas(grande = true, ancho = true),
+        shape = FormaPildora,
         contentPadding = RellenoBoton,
         colors = ButtonDefaults.buttonColors(
             containerColor = AruyTheme.colores.whatsapp,
-            contentColor = Color.White
+            contentColor = Superposiciones.tintaSobreVelo
         )
-    ) { ContenidoBoton(texto, icono, false, Color.White) }
+    ) { ContenidoBoton(texto, icono, false, Superposiciones.tintaSobreVelo) }
 }
 
 /** Acciones destructivas: "Eliminar servicio", "Eliminar mi cuenta". */
@@ -181,7 +190,8 @@ fun BotonPeligro(
         TextButton(
             onClick = onClick,
             enabled = !cargando,
-            modifier = modifier.heightIn(min = AlturaNormal),
+            modifier = modifier.heightIn(min = AlturaMinimaToque),
+            shape = FormaPildora,
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) { Text(texto, style = MaterialTheme.typography.labelLarge) }
     } else {
@@ -189,7 +199,8 @@ fun BotonPeligro(
             onClick = onClick,
             enabled = !cargando,
             modifier = modifier.botonMedidas(grande = false, ancho = ancho),
-            contentPadding = RellenoBoton,
+            shape = FormaPildora,
+        contentPadding = RellenoBoton,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.error,
                 contentColor = MaterialTheme.colorScheme.onError
@@ -207,8 +218,48 @@ private fun Modifier.botonMedidas(grande: Boolean, ancho: Boolean): Modifier =
 @Composable
 fun FilaBotones(content: @Composable RowScope.() -> Unit) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Espacios.m),
         verticalAlignment = Alignment.CenterVertically,
         content = content
     )
+}
+
+/** Aspecto del [BotonCircular]. */
+enum class VarianteCircular { SOBRE_FOTO, TONAL, RELLENO }
+
+/**
+ * Botón circular de 48 dp (corazón sobre una foto, atrás, compartir...). [seleccionado] marca un
+ * estado activo, por ejemplo "guardado": cambia el color del ícono.
+ */
+@Composable
+fun BotonCircular(
+    icono: ImageVector,
+    descripcion: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    variante: VarianteCircular = VarianteCircular.SOBRE_FOTO,
+    seleccionado: Boolean = false
+) {
+    val esquema = MaterialTheme.colorScheme
+    val colores = when (variante) {
+        VarianteCircular.SOBRE_FOTO -> IconButtonDefaults.filledIconButtonColors(
+            containerColor = Superposiciones.sobreFoto,
+            contentColor = if (seleccionado) esquema.error else Superposiciones.sobreFotoTinta
+        )
+        VarianteCircular.TONAL -> IconButtonDefaults.filledIconButtonColors(
+            containerColor = esquema.surfaceContainerHigh,
+            contentColor = if (seleccionado) esquema.error else esquema.onSurface
+        )
+        VarianteCircular.RELLENO -> IconButtonDefaults.filledIconButtonColors(
+            containerColor = esquema.primary,
+            contentColor = esquema.onPrimary
+        )
+    }
+    FilledIconButton(
+        onClick = onClick,
+        modifier = modifier.size(AlturaMinimaToque),
+        colors = colores
+    ) {
+        Icon(icono, contentDescription = descripcion, modifier = Modifier.size(22.dp))
+    }
 }
