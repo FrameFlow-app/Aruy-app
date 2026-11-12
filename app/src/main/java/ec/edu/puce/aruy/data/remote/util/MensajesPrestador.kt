@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.data.remote.util
 
+import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import retrofit2.HttpException
 
 /** Mensajes en español para los errores del servidor al publicar servicios y subir fotos. */
@@ -12,7 +13,7 @@ object MensajesPrestador {
                 400, 415 -> return "La foto no es un JPG, PNG o WEBP válido."
                 403 -> return "Ese servicio no es tuyo."
                 404 -> return "No encontramos el servicio. Puede que ya se haya eliminado."
-                409 -> return "Este servicio ya tiene 10 fotos, el máximo permitido."
+                409 -> return "Este servicio ya tiene 3 fotos, el máximo permitido."
                 413 -> return "La foto es demasiado grande para enviarla."
                 422 -> return "No se pudo reducir la foto a 500 KB. Prueba con otra más pequeña."
                 429 -> return "Subiste muchas fotos en poco tiempo. Espera unos minutos."
@@ -30,7 +31,12 @@ object MensajesPrestador {
                 400 -> return ApiErrorHandler.mensajeDelServidor(error) ?: "Revisa los datos del servicio."
                 403 -> return "Ese servicio no es tuyo."
                 404 -> return "No encontramos el servicio. Puede que ya se haya eliminado."
-                409 -> return "Primero crea tu perfil de prestador."
+                409 -> {
+                    val delServidor = ApiErrorHandler.mensajeDelServidor(error)
+                    val limite = delServidor?.lowercase()?.let { "maximo" in it || "2 servicios" in it } == true
+                    return if (limite) ValidacionesServicio.AVISO_MAX_SERVICIOS
+                    else delServidor ?: "Primero crea tu perfil de prestador."
+                }
             }
         }
         return ApiErrorHandler.obtenerMensaje(error)

@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.data.local.PreferenciasStore
@@ -18,6 +19,8 @@ import ec.edu.puce.aruy.domain.validation.Validaciones
 import ec.edu.puce.aruy.domain.validation.ValidacionesPerfil
 import ec.edu.puce.aruy.ui.theme.ModoTema
 import ec.edu.puce.aruy.ui.theme.TamanoTexto
+import ec.edu.puce.aruy.util.ConversorWebp
+import ec.edu.puce.aruy.util.ErrorFoto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +39,8 @@ data class EditarPerfilUi(
     val cargando: Boolean = true,
     val esPrestador: Boolean = false,
     val email: String? = null,
+    val fotoPerfil: String? = null,
+    val subiendoFoto: Boolean = false,
     val nombre: String = "",
     val celular: String = "",
     val oficio: String = "",
@@ -53,7 +58,8 @@ data class EditarPerfilUi(
 
 class EditarPerfilViewModel(
     private val repositorio: PerfilRepository,
-    private val sesion: SesionManager
+    private val sesion: SesionManager,
+    private val conversor: ConversorWebp
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(EditarPerfilUi())
@@ -78,6 +84,7 @@ class EditarPerfilViewModel(
                         cargando = false,
                         esPrestador = prestador,
                         email = datos.email,
+                        fotoPerfil = datos.usuario.fotoPerfil,
                         nombre = datos.usuario.nombre,
                         celular = datos.usuario.telefono,
                         oficio = perfil?.oficioPrincipal.orEmpty(),
@@ -102,6 +109,52 @@ class EditarPerfilViewModel(
     fun cambiarZona(v: String) = _ui.update { it.copy(zona = v.take(ValidacionesPerfil.ZONA_MAX), errorZona = null) }
     fun cambiarDescripcion(v: String) = _ui.update { it.copy(descripcion = v.take(ValidacionesPerfil.DESCRIPCION_MAX)) }
     fun cambiarAnios(v: String) = _ui.update { it.copy(anios = v.take(2), errorAnios = null) }
+
+    /** La foto se sube al elegirla, sin esperar a "Guardar cambios". No se valida con ML Kit: es una foto de perfil. */
+    fun elegirFoto(uri: Uri, desdeCamara: Boolean) {
+        if (_ui.value.subiendoFoto) {
+            if (desdeCamara) conversor.borrarTemporal(uri)
+            return
+        }
+        _ui.update { it.copy(subiendoFoto = true) }
+        viewModelScope.launch {
+            try {
+                val imagen = conversor.convertir(uri)
+                val usuario = repositorio.subirMiFoto(imagen.webp)
+                sesion.actualizarUsuario(usuario)
+                _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
+                _mensajes.tryEmit("Foto de perfil actualizada.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ErrorFoto) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(e.message.orEmpty())
+            } catch (e: Exception) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(MensajesPerfil.alSubirFoto(e))
+            } finally {
+                if (desdeCamara) conversor.borrarTemporal(uri)
+            }
+        }
+    }
+
+    fun quitarFoto() {
+        if (_ui.value.subiendoFoto) return
+        _ui.update { it.copy(subiendoFoto = true) }
+        viewModelScope.launch {
+            try {
+                val usuario = repositorio.quitarMiFoto()
+                sesion.actualizarUsuario(usuario)
+                _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
+                _mensajes.tryEmit("Quitaste tu foto de perfil.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(MensajesPerfil.alSubirFoto(e))
+            }
+        }
+    }
 
     fun guardar() {
         val u = _ui.value

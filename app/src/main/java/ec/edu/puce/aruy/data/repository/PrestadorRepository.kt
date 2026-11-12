@@ -97,7 +97,7 @@ class PrestadorRepository(
 
     companion object {
         const val TIPO_WEBP = "image/webp"
-        const val MAX_FOTOS_POR_SERVICIO = 10
+        const val MAX_FOTOS_POR_SERVICIO = 3
         private const val MAX_ETIQUETAS = 20
         private const val MAX_LARGO_ETIQUETA = 50
 

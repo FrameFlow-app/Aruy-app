@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import ec.edu.puce.aruy.ui.components.AruyInterruptor
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
 import ec.edu.puce.aruy.ui.components.BotonRelleno
@@ -114,7 +115,17 @@ fun PanelScreen(
                     items(ui.servicios.take(3), key = { it.servicio.id }) { propio ->
                         FilaServicioPropio(propio, onClick = { onEditar(propio.servicio.id) })
                     }
-                    item { BotonRelleno("Nuevo servicio", onNuevoServicio, ancho = true) }
+                    item {
+                        if (ui.servicios.size >= ValidacionesServicio.MAX_SERVICIOS) {
+                            Text(
+                                ValidacionesServicio.AVISO_MAX_SERVICIOS,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            BotonRelleno("Nuevo servicio", onNuevoServicio, ancho = true)
+                        }
+                    }
                 }
             }
         }

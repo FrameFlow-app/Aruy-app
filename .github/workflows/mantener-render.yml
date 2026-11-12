@@ -1,0 +1,28 @@
+# Render (plan gratuito) duerme la instancia tras ~15 min sin trafico.
+# Este ping cada 10 min la mantiene despierta, y con ello tambien sigue
+# corriendo dentro del servidor el keep-alive de Supabase.
+# Nota: GitHub solo ejecuta `schedule` desde la rama por defecto y puede
+# retrasarlo unos minutos.
+# Nota: GitHub desactiva los workflows programados tras 60 dias sin
+# actividad en el repositorio (se reactivan manualmente desde Actions).
+name: Mantener activo el backend (Render)
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mantener-render
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping al endpoint /health
+        run: curl -fsS --max-time 90 --retry 2 --retry-delay 10 -o /dev/null -w "estado %{http_code} en %{time_total}s\n" https://aruy-api.onrender.com/health
