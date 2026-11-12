@@ -522,7 +522,7 @@ paths['/servicios/{id}/fotos'].post = {
   tags: ['Servicios'],
   summary: 'Agregar una foto a un servicio ya publicado',
   description:
-    'La imagen se sube a Firebase Storage desde la app; aquí solo se guarda su dirección (`referencia_imagen`, debe ser https). Máximo 10 fotos por servicio.',
+    'La imagen se sube a Firebase Storage desde la app; aquí solo se guarda su dirección (`referencia_imagen`, debe ser https). Máximo 3 fotos por servicio.',
   security: conToken,
   parameters: [idPath('Id del servicio')],
   requestBody: {
@@ -543,7 +543,7 @@ paths['/servicios/{id}/fotos'].post = {
     401: e401,
     403: errorRespuesta('Ese servicio no es tuyo, o no eres PRESTADOR'),
     404: errorRespuesta('Servicio no encontrado'),
-    409: errorRespuesta('El servicio ya tiene 10 fotos'),
+    409: errorRespuesta('El servicio ya tiene 3 fotos'),
   },
 };
 paths['/fotos/{id}'] = {
@@ -891,7 +891,8 @@ delete components.schemas.ServicioNuevo.properties.fotos;
 paths['/servicios'].post.summary = 'Publicar un servicio';
 paths['/servicios'].post.description =
   'Solo un `PRESTADOR` con perfil. El prestador se toma del token, no del cuerpo. ' +
-  'Las fotos se suben después, una por una, con `POST /servicios/{id}/fotos`.';
+  'Las fotos se suben después, una por una, con `POST /servicios/{id}/fotos` (máximo 3 por servicio). ' +
+  'Cada prestador puede tener como máximo 2 servicios; los que ya tuviera de más se conservan, pero no puede publicar otro.';
 paths['/servicios'].post.requestBody.content['application/json'].example = {
   titulo: 'PRUEBA plomería',
   descripcion: 'Servicio de prueba',
@@ -899,6 +900,9 @@ paths['/servicios'].post.requestBody.content['application/json'].example = {
   precio_referencial: 25.5,
 };
 paths['/servicios'].post.responses[201] = { description: 'Servicio publicado', content: json(ref('Servicio')) };
+paths['/servicios'].post.responses[409] = errorRespuesta(
+  'Falta el perfil de prestador, o ya tienes 2 servicios ("Puedes tener como maximo 2 servicios. Elimina uno para publicar otro.")'
+);
 
 const imagenBin = { type: 'string', format: 'binary' };
 paths['/servicios/{id}/fotos'].post = {
@@ -906,7 +910,7 @@ paths['/servicios/{id}/fotos'].post = {
   summary: 'Subir una foto al portafolio de mi servicio',
   description:
     'El cuerpo es **la imagen tal cual** (JPG, PNG o WEBP, hasta 5 MB), con su `Content-Type`. ' +
-    'Primero se comprueba que el servicio sea tuyo y que tenga menos de 10 fotos; recién entonces se lee la imagen. ' +
+    'Primero se comprueba que el servicio sea tuyo y que tenga menos de 3 fotos; recién entonces se lee la imagen. ' +
     'El servidor revisa el formato y las dimensiones reales, la **convierte a WebP** (máximo 1280 px por el lado largo, calidad 80 y, si hace falta para no pasar de 500 KB, menos), ' +
     'la guarda en Supabase Storage y registra en la base **solo su ruta**. No se conserva la ubicación GPS ni el resto de datos EXIF.\n\n' +
     'Opcional en la dirección: `?etiquetas=Tuberia,Bano` (resultado de ML Kit, máximo 20) y `?descripcion=...`.',
@@ -926,7 +930,7 @@ paths['/servicios/{id}/fotos'].post = {
     401: e401,
     403: errorRespuesta('Ese servicio no es tuyo, o no eres PRESTADOR'),
     404: errorRespuesta('Servicio no encontrado'),
-    409: errorRespuesta('El servicio ya tiene 10 fotos'),
+    409: errorRespuesta('El servicio ya tiene 3 fotos'),
     413: errorRespuesta('La imagen pesa más de 5 MB'),
     415: errorRespuesta('Falta la imagen o su Content-Type no es image/jpeg, image/png o image/webp'),
     422: errorRespuesta('No se pudo reducir la imagen a 500 KB'),

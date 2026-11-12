@@ -187,7 +187,7 @@ fun DetalleServicioScreen(
 
                     AruyTarjeta(onClick = { onPrestador(item.servicio.prestadorId) }, modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            AruyAvatar(item.nombrePrestador, tamano = 48.dp)
+                            AruyAvatar(item.nombrePrestador, tamano = 48.dp, fotoUrl = item.prestador?.fotoPerfil)
                             Column {
                                 Text(item.nombrePrestador, style = MaterialTheme.typography.titleMedium)
                                 val detalle = listOfNotNull(
@@ -229,6 +229,7 @@ fun DetalleServicioScreen(
             "contactar" -> HojaContactar(
                 nombre = item.nombrePrestador,
                 oficio = item.prestador?.oficio,
+                fotoUrl = item.prestador?.fotoPerfil,
                 tituloServicio = item.servicio.titulo,
                 disponible = FiltroCatalogo.disponibleAhora(item),
                 onAbrirWhatsApp = { mensaje ->

@@ -52,12 +52,13 @@ fun HojaContactar(
     disponible: Boolean,
     onAbrirWhatsApp: (mensaje: String) -> Unit,
     onCopiar: (mensaje: String) -> Unit,
-    onCerrar: () -> Unit
+    onCerrar: () -> Unit,
+    fotoUrl: String? = null
 ) {
     var mensaje by rememberSaveable { mutableStateOf(Contacto.mensajePorDefecto(nombre, tituloServicio)) }
     AruyHoja("Contactar a $nombre", onCerrar) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AruyAvatar(nombre)
+            AruyAvatar(nombre, fotoUrl = fotoUrl)
             if (!oficio.isNullOrBlank()) Text(oficio, style = MaterialTheme.typography.bodyLarge)
         }
         if (!disponible) {

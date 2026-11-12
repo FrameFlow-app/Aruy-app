@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,12 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import ec.edu.puce.aruy.ui.theme.AruyTheme
 import ec.edu.puce.aruy.ui.theme.FuenteTitulos
 import java.util.Locale
@@ -125,9 +128,12 @@ fun Pastilla(texto: String, modifier: Modifier = Modifier, tipo: TipoPastilla = 
     }
 }
 
-/** Avatar con iniciales y 5 tonos (`avatar` + `data-tone`). El tono sale del texto, así es estable. */
+/**
+ * Avatar con iniciales y 5 tonos (`avatar` + `data-tone`). El tono sale del texto, así es estable.
+ * Con [fotoUrl] muestra la foto de perfil; las iniciales quedan detrás mientras carga o si falla.
+ */
 @Composable
-fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp) {
+fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp, fotoUrl: String? = null) {
     val esquema = MaterialTheme.colorScheme
     val colores = AruyTheme.colores
     val tonos = listOf(
@@ -143,7 +149,7 @@ fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp
             .size(tamano)
             .clip(CircleShape)
             .background(fondo)
-            .semantics { contentDescription = nombre },
+            .semantics { contentDescription = if (fotoUrl.isNullOrBlank()) nombre else "Foto de perfil de $nombre" },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -153,6 +159,14 @@ fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp
             fontWeight = FontWeight.Bold,
             fontSize = (tamano.value * 0.38f).sp
         )
+        if (!fotoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = fotoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
+            )
+        }
     }
 }
 

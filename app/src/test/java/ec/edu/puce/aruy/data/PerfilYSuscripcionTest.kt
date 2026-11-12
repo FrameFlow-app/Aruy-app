@@ -99,6 +99,44 @@ class PerfilYSuscripcionTest {
     }
 
     @Test
+    fun subir_mi_foto_envia_el_webp_crudo_y_mapea_la_url() = runBlocking {
+        val url = "https://xyz.supabase.co/storage/v1/object/public/fotos/u1.webp"
+        servidor.enqueue(MockResponse().setBody(usuarioJson.replace("\"foto_perfil\":null", "\"foto_perfil\":\"$url\"")))
+        val bytes = byteArrayOf(1, 2, 3, 4)
+
+        val usuario = perfiles.subirMiFoto(bytes)
+
+        val peticion = servidor.takeRequest()
+        assertEquals("POST", peticion.method)
+        assertEquals("/usuarios/yo/foto", peticion.path)
+        assertEquals("image/webp", peticion.getHeader("Content-Type"))
+        assertEquals("Bearer token", peticion.getHeader("Authorization"))
+        assertEquals(bytes.toList(), peticion.body.readByteArray().toList())
+        assertEquals(url, usuario.fotoPerfil)
+    }
+
+    @Test
+    fun quitar_mi_foto_envia_foto_perfil_null() = runBlocking {
+        servidor.enqueue(MockResponse().setBody(usuarioJson))
+
+        val usuario = perfiles.quitarMiFoto()
+
+        val peticion = servidor.takeRequest()
+        assertEquals("PATCH", peticion.method)
+        assertEquals("/usuarios/yo", peticion.path)
+        assertTrue(peticion.body.readUtf8().replace(" ", "").contains("\"foto_perfil\":null"))
+        assertNull(usuario.fotoPerfil)
+    }
+
+    @Test
+    fun los_errores_de_la_foto_de_perfil_tienen_mensajes_claros() {
+        assertTrue(MensajesPerfil.alSubirFoto(httpError(413)).contains("5 MB"))
+        assertTrue(MensajesPerfil.alSubirFoto(httpError(422)).contains("reducir"))
+        assertTrue(MensajesPerfil.alSubirFoto(httpError(503)).contains("no está disponible"))
+        assertTrue(MensajesPerfil.alSubirFoto(httpError(415)).contains("formato"))
+    }
+
+    @Test
     fun eliminar_la_cuenta_acepta_la_respuesta_204() = runBlocking {
         servidor.enqueue(MockResponse().setResponseCode(204))
 

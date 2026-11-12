@@ -79,7 +79,7 @@ fun PerfilScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AruyAvatar(usuario.nombre, tamano = 96.dp)
+            AruyAvatar(usuario.nombre, tamano = 96.dp, fotoUrl = usuario.fotoPerfil)
             Text(usuario.nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
             EtiquetasPerfil(prestador, usuario)
         }

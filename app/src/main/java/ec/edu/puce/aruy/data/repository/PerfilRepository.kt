@@ -10,6 +10,8 @@ import ec.edu.puce.aruy.data.remote.dto.PerfilPropioDto
 import ec.edu.puce.aruy.domain.model.PerfilPrestador
 import ec.edu.puce.aruy.domain.model.Usuario
 import ec.edu.puce.aruy.domain.validation.Validaciones
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Mis datos de cuenta: el correo solo lo devuelve `GET /usuarios/yo`. */
 data class MisDatos(val usuario: Usuario, val email: String?)
@@ -36,6 +38,16 @@ class PerfilRepository(
     suspend fun actualizarMisDatos(nombre: String, telefono: String): Usuario =
         usuarioApi.editarMiUsuario(
             EditarUsuarioRequest(nombre = nombre.trim(), telefono = Validaciones.normalizarCelular(telefono))
+        ).toDomain()
+
+    /** Sube la foto de perfil (ya en WebP); el servidor la reduce a 512 px y devuelve mi usuario con la URL. */
+    suspend fun subirMiFoto(webp: ByteArray): Usuario =
+        usuarioApi.subirMiFoto(webp.toRequestBody(PrestadorRepository.TIPO_WEBP.toMediaType())).toDomain()
+
+    /** `{"foto_perfil": null}` borra la foto en el servidor. */
+    suspend fun quitarMiFoto(): Usuario =
+        usuarioApi.quitarMiFoto(
+            PrestadorRepository.comoJson(JsonObject().apply { add("foto_perfil", JsonNull.INSTANCE) })
         ).toDomain()
 
     suspend fun miPerfil(): PerfilPrestador = prestadorApi.miPerfil().toPerfil()
