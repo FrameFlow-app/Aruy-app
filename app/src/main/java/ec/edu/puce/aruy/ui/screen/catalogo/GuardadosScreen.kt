@@ -16,7 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +42,7 @@ import ec.edu.puce.aruy.ui.viewmodel.ActividadLocalViewModel
 import ec.edu.puce.aruy.ui.viewmodel.CatalogoViewModel
 
 /** Guardados: favoritos y prestadores contactados (`guardados.js`). Todo vive en el teléfono. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun GuardadosScreen(
     catalogo: CatalogoViewModel,
@@ -58,7 +59,7 @@ fun GuardadosScreen(
     LaunchedEffect(Unit) { catalogo.cargarSiHaceFalta() }
 
     Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = pestana) {
+        PrimaryTabRow(selectedTabIndex = pestana) {
             Tab(selected = pestana == 0, onClick = { pestana = 0 }, text = { Text("Favoritos") })
             Tab(selected = pestana == 1, onClick = { pestana = 1 }, text = { Text("Contactados") })
         }

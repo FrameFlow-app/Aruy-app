@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.screen.prestador
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -310,11 +311,11 @@ private fun MiniaturaFoto(
 @Composable
 private fun EstadoDeLaFoto(pendiente: FotoPendiente) {
     when (val estado = pendiente.estado) {
-        EstadoSubida.Subiendo -> Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+        EstadoSubida.Subiendo -> Box(Modifier.fillMaxSize().background(Superposiciones.veloLeve), contentAlignment = Alignment.Center) {
             LinearProgressIndicator(Modifier.padding(horizontal = 12.dp))
         }
-        is EstadoSubida.Fallo -> Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.ErrorOutline, contentDescription = estado.mensaje, tint = Color.White)
+        is EstadoSubida.Fallo -> Box(Modifier.fillMaxSize().background(Superposiciones.veloFuerte), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.ErrorOutline, contentDescription = estado.mensaje, tint = Superposiciones.tintaSobreVelo)
         }
         EstadoSubida.Pendiente -> Unit
     }

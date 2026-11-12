@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.components
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -41,10 +42,10 @@ fun BotonQuitarFoto(onClick: () -> Unit, modifier: Modifier = Modifier, habilita
         Box(
             Modifier
                 .size(28.dp)
-                .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                .background(Superposiciones.veloFuerte, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Close, contentDescription = "Quitar foto", tint = Color.White, modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.Close, contentDescription = "Quitar foto", tint = Superposiciones.tintaSobreVelo, modifier = Modifier.size(16.dp))
         }
     }
 }

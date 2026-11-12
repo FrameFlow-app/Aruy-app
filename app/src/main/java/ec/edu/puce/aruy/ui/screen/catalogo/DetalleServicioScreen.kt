@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -44,7 +45,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -201,7 +202,7 @@ fun DetalleServicioScreen(
                         }
                     }
 
-                    TabRow(selectedTabIndex = pestana) {
+                    PrimaryTabRow(selectedTabIndex = pestana) {
                         PESTANAS.forEachIndexed { i, titulo ->
                             Tab(selected = pestana == i, onClick = { pestana = i }, text = { Text(titulo) })
                         }
@@ -397,7 +398,7 @@ private fun Galeria(
         }
         if (fotos.size > 1) {
             Surface(
-                color = Color.Black.copy(alpha = 0.55f),
+                color = Superposiciones.veloFuerte,
                 shape = CircleShape,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -405,7 +406,7 @@ private fun Galeria(
             ) {
                 Text(
                     "${estado.currentPage + 1} / ${fotos.size}",
-                    color = Color.White,
+                    color = Superposiciones.tintaSobreVelo,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                 )
@@ -416,9 +417,9 @@ private fun Galeria(
 
 @Composable
 private fun BotonSobreFoto(icono: androidx.compose.ui.graphics.vector.ImageVector, descripcion: String, onClick: () -> Unit) {
-    Surface(color = Color.Black.copy(alpha = 0.45f), shape = CircleShape) {
+    Surface(color = Superposiciones.velo, shape = CircleShape) {
         IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
-            Icon(icono, contentDescription = descripcion, tint = Color.White)
+            Icon(icono, contentDescription = descripcion, tint = Superposiciones.tintaSobreVelo)
         }
     }
 }
@@ -528,7 +529,7 @@ internal fun VisorDeFotos(fotos: List<FotoPortafolio>, inicial: Int, onCerrar: (
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Superposiciones.visor)
         ) {
             HorizontalPager(state = estado, modifier = Modifier.fillMaxSize()) { pagina ->
                 AsyncImage(
@@ -539,11 +540,11 @@ internal fun VisorDeFotos(fotos: List<FotoPortafolio>, inicial: Int, onCerrar: (
                 )
             }
             IconButton(onClick = onCerrar, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(48.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Color.White)
+                Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Superposiciones.tintaSobreVelo)
             }
             Text(
                 "${estado.currentPage + 1} de ${fotos.size}",
-                color = Color.White,
+                color = Superposiciones.tintaSobreVelo,
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
