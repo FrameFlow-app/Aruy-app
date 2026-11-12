@@ -26,7 +26,7 @@ async function arrancar() {
   let salida = '';
   hijo.stdout.on('data', (d) => (salida += d));
   hijo.stderr.on('data', (d) => (salida += d));
-  for (let i = 0; i < 100 && !salida.includes('Servidor en'); i++) await new Promise((r) => setTimeout(r, 50));
+  for (let i = 0; i < 300 && !salida.includes('Servidor en'); i++) await new Promise((r) => setTimeout(r, 50));
   assert.ok(salida.includes('Servidor en'), 'el servidor debe arrancar. Salida: ' + salida);
   return { hijo, url: `http://127.0.0.1:${puerto}`, salida: () => salida };
 }

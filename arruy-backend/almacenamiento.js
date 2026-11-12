@@ -94,4 +94,26 @@ async function borrarReferencias(referencias) {
   }
 }
 
-module.exports = { config, detectarTipo, subirWebp, urlPublica, rutaDeReferencia, borrarReferencias, ErrorAlmacenamiento, TIPOS_ENTRADA };
+// Supabase (plan gratis) pausa los proyectos con poca actividad de base de datos en 7 dias. Pedir la lista de
+// archivos (1 solo) es una llamada autenticada a la API que consulta su base: se hace al arrancar y cada 12 horas.
+// Nunca lanza error: si falla, solo se informa.
+async function mantenerActivo() {
+  const c = config();
+  if (!c.ok) return { ok: false, motivo: 'Supabase no esta configurado' };
+  try {
+    const r = await fetch(`${c.url}/storage/v1/object/list/${c.bucket}`, {
+      method: 'POST',
+      headers: cabeceras(c.clave, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prefix: '', limit: 1 }),
+      signal: AbortSignal.timeout(20000),
+    });
+    return { ok: r.ok, estado: r.status };
+  } catch (e) {
+    return { ok: false, motivo: e.name === 'TimeoutError' ? 'tiempo agotado' : e.message };
+  }
+}
+
+module.exports = {
+  config, detectarTipo, subirWebp, urlPublica, rutaDeReferencia, borrarReferencias, mantenerActivo,
+  ErrorAlmacenamiento, TIPOS_ENTRADA,
+};
