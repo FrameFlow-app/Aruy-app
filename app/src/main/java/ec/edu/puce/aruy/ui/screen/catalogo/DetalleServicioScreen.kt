@@ -1,5 +1,8 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import ec.edu.puce.aruy.ui.theme.AruyTheme
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -8,6 +11,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,13 +23,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,8 +46,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +59,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
@@ -72,7 +72,11 @@ import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.ResumenOpiniones
 import ec.edu.puce.aruy.ui.components.AruyAvatar
+import ec.edu.puce.aruy.ui.components.AruyChip
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
+import ec.edu.puce.aruy.ui.components.BarraAccionesInferior
+import ec.edu.puce.aruy.ui.components.BotonCircular
+import ec.edu.puce.aruy.ui.components.BotonTonal
 import ec.edu.puce.aruy.ui.components.BotonContorno
 import ec.edu.puce.aruy.ui.components.BotonWhatsApp
 import ec.edu.puce.aruy.ui.components.Calificacion
@@ -128,11 +132,28 @@ fun DetalleServicioScreen(
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             ui.item?.let { item ->
-                BarraContacto(
-                    nombre = item.nombrePrestador,
-                    tieneTelefono = Contacto.numeroWhatsApp(item.prestador?.telefono) != null,
-                    disponible = FiltroCatalogo.disponibleAhora(item),
-                    onContactar = { hoja = "contactar" }
+                BarraAccionesInferior(
+                    secundario = {
+                        BotonTonal(
+                            texto = if (esFavorito) "Guardado" else "Guardar",
+                            onClick = {
+                                actividad.alternarFavorito(item.id, esFavorito) { ahora ->
+                                    avisar(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos.")
+                                }
+                            },
+                            icono = if (esFavorito) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            grande = true,
+                            ancho = true
+                        )
+                    },
+                    primario = {
+                        BotonWhatsApp(
+                            "Contactar",
+                            { hoja = "contactar" },
+                            icono = Icons.AutoMirrored.Filled.Chat,
+                            habilitado = Contacto.numeroWhatsApp(item.prestador?.telefono) != null
+                        )
+                    }
                 )
             }
         }
@@ -157,17 +178,13 @@ fun DetalleServicioScreen(
                 Galeria(
                     fotos = ui.fotos,
                     categoria = item.servicio.categoria,
-                    esFavorito = esFavorito,
                     onVolver = onVolver,
                     onCompartir = { compartir(contexto, item.servicio.titulo) },
-                    onFavorito = { actividad.alternarFavorito(item.id, esFavorito) { ahora ->
-                        avisar(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos.")
-                    } },
                     onMas = { hoja = "opciones" },
                     onAbrirFoto = { fotoAbierta = it }
                 )
 
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.padding(Espacios.l), verticalArrangement = Arrangement.spacedBy(Espacios.m)) {
                     Text(
                         item.servicio.titulo,
                         style = MaterialTheme.typography.headlineMedium,
@@ -175,7 +192,10 @@ fun DetalleServicioScreen(
                     )
                     Text(textoPrecio(item.servicio.precioReferencial), style = MaterialTheme.typography.titleLarge)
 
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Espacios.s),
+                        verticalArrangement = Arrangement.spacedBy(Espacios.s)
+                    ) {
                         Calificacion(
                             ui.opiniones?.promedio ?: item.prestador?.promedio,
                             ui.opiniones?.total ?: item.prestador?.totalCalificaciones ?: 0
@@ -185,9 +205,25 @@ fun DetalleServicioScreen(
                         if (item.prestador?.verificado == true) SelloVerificado(conTexto = true)
                     }
 
+                    if (!FiltroCatalogo.disponibleAhora(item)) {
+                        AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "${item.nombrePrestador} no recibe solicitudes ahora. Puedes dejarle un mensaje.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    if (Contacto.numeroWhatsApp(item.prestador?.telefono) == null) {
+                        Text(
+                            "El contacto por WhatsApp estará disponible cuando el servidor entregue el teléfono del prestador.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     AruyTarjeta(onClick = { onPrestador(item.servicio.prestadorId) }, modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            AruyAvatar(item.nombrePrestador, tamano = 48.dp, fotoUrl = item.prestador?.fotoPerfil)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
+                            AruyAvatar(item.nombrePrestador, tamano = 56.dp, fotoUrl = item.prestador?.fotoPerfil)
                             Column {
                                 Text(item.nombrePrestador, style = MaterialTheme.typography.titleMedium)
                                 val detalle = listOfNotNull(
@@ -201,9 +237,9 @@ fun DetalleServicioScreen(
                         }
                     }
 
-                    TabRow(selectedTabIndex = pestana) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), modifier = Modifier.fillMaxWidth()) {
                         PESTANAS.forEachIndexed { i, titulo ->
-                            Tab(selected = pestana == i, onClick = { pestana = i }, text = { Text(titulo) })
+                            AruyChip(titulo, seleccionado = pestana == i, onClick = { pestana = i })
                         }
                     }
                     when (pestana) {
@@ -313,52 +349,26 @@ private fun compartir(contexto: Context, titulo: String) {
     contexto.startActivity(Intent.createChooser(envio, "Compartir este servicio").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
-@Composable
-private fun BarraContacto(nombre: String, tieneTelefono: Boolean, disponible: Boolean, onContactar: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (!disponible) {
-                Text(
-                    "$nombre no recibe solicitudes ahora. Puedes dejarle un mensaje.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            BotonWhatsApp("Contactar por WhatsApp", onContactar, icono = Icons.AutoMirrored.Filled.Chat, habilitado = tieneTelefono)
-            if (!tieneTelefono) {
-                Text(
-                    "El contacto por WhatsApp estará disponible cuando el servidor entregue el teléfono del prestador.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Galeria(
     fotos: List<FotoPortafolio>,
     categoria: ec.edu.puce.aruy.domain.model.CategoriaServicio,
-    esFavorito: Boolean,
     onVolver: () -> Unit,
     onCompartir: () -> Unit,
-    onFavorito: () -> Unit,
     onMas: () -> Unit,
     onAbrirFoto: (Int) -> Unit
 ) {
     val estado = rememberPagerState { maxOf(fotos.size, 1) }
+    val alcance = rememberCoroutineScope()
+    val reducir = AruyTheme.reducirAnimaciones
     Box(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(4f / 3f)
+            .statusBarsPadding()
+            .padding(horizontal = Espacios.l, vertical = Espacios.s)
+            .aspectRatio(4f / 3.4f)
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(MaterialTheme.colorScheme.primaryContainer)
     ) {
         HorizontalPager(state = estado, modifier = Modifier.fillMaxSize()) { pagina ->
@@ -381,44 +391,44 @@ private fun Galeria(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(Espacios.m),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            BotonSobreFoto(Icons.AutoMirrored.Filled.ArrowBack, "Volver", onVolver)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                BotonSobreFoto(Icons.Filled.Share, "Compartir este servicio", onCompartir)
-                BotonSobreFoto(
-                    if (esFavorito) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    if (esFavorito) "Quitar de favoritos" else "Guardar en favoritos",
-                    onFavorito
-                )
-                BotonSobreFoto(Icons.Filled.MoreVert, "Más opciones", onMas)
+            BotonCircular(Icons.AutoMirrored.Filled.ArrowBack, "Volver", onVolver)
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s)) {
+                BotonCircular(Icons.Filled.Share, "Compartir este servicio", onCompartir)
+                BotonCircular(Icons.Filled.MoreVert, "Más opciones", onMas)
             }
         }
         if (fotos.size > 1) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.55f),
-                shape = CircleShape,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp)
+            Column(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = Espacios.m),
+                verticalArrangement = Arrangement.spacedBy(Espacios.s)
             ) {
-                Text(
-                    "${estado.currentPage + 1} / ${fotos.size}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                )
+                fotos.forEachIndexed { i, foto ->
+                    val activa = estado.currentPage == i
+                    AsyncImage(
+                        model = foto.url,
+                        contentDescription = "Ver foto ${i + 1} de ${fotos.size}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .border(
+                                if (activa) 2.dp else 1.dp,
+                                if (activa) MaterialTheme.colorScheme.primary else Superposiciones.sobreFoto,
+                                MaterialTheme.shapes.medium
+                            )
+                            .clickable {
+                                alcance.launch {
+                                    if (reducir) estado.scrollToPage(i) else estado.animateScrollToPage(i)
+                                }
+                            }
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun BotonSobreFoto(icono: androidx.compose.ui.graphics.vector.ImageVector, descripcion: String, onClick: () -> Unit) {
-    Surface(color = Color.Black.copy(alpha = 0.45f), shape = CircleShape) {
-        IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
-            Icon(icono, contentDescription = descripcion, tint = Color.White)
         }
     }
 }
@@ -505,7 +515,7 @@ internal fun PestanaOpiniones(
                 }
             }
             opiniones.opiniones.forEach { opinion ->
-                AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         Text(opinion.autor, style = MaterialTheme.typography.titleMedium)
                         Text("${opinion.puntuacion} ★", style = MaterialTheme.typography.labelLarge)
@@ -528,7 +538,7 @@ internal fun VisorDeFotos(fotos: List<FotoPortafolio>, inicial: Int, onCerrar: (
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Superposiciones.visor)
         ) {
             HorizontalPager(state = estado, modifier = Modifier.fillMaxSize()) { pagina ->
                 AsyncImage(
@@ -539,11 +549,11 @@ internal fun VisorDeFotos(fotos: List<FotoPortafolio>, inicial: Int, onCerrar: (
                 )
             }
             IconButton(onClick = onCerrar, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(48.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Color.White)
+                Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Superposiciones.tintaSobreVelo)
             }
             Text(
                 "${estado.currentPage + 1} de ${fotos.size}",
-                color = Color.White,
+                color = Superposiciones.tintaSobreVelo,
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

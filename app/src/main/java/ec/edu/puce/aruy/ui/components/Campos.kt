@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -19,11 +20,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 
 /** Campo de texto del prototipo: etiqueta arriba, 56 dp mínimo, error en rojo debajo. */
 @Composable
@@ -62,7 +66,18 @@ fun AruyCampo(
         visualTransformation = transformacion,
         trailingIcon = iconoFinal,
         enabled = habilitado,
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.large,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            // Sin contorno en reposo; el foco y el error sí se marcan con claridad
+            unfocusedBorderColor = Color.Transparent,
+            disabledBorderColor = Color.Transparent,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            errorBorderColor = MaterialTheme.colorScheme.error
+        )
     )
 }
 
@@ -79,8 +94,9 @@ fun AruyInterruptor(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
+            .clip(MaterialTheme.shapes.large)
             .toggleable(value = activado, role = Role.Switch, onValueChange = onCambio)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -112,7 +128,14 @@ fun AruySegmentado(
             SegmentedButton(
                 selected = indice == seleccionada,
                 onClick = { onSeleccion(indice) },
-                shape = SegmentedButtonDefaults.itemShape(indice, opciones.size),
+                shape = SegmentedButtonDefaults.itemShape(indice, opciones.size, FormaPildora),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    activeBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                    inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    inactiveBorderColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
                 modifier = Modifier.heightIn(min = 48.dp).semantics { }
             ) { Text(texto) }
         }

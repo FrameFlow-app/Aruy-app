@@ -19,8 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,6 +42,10 @@ import androidx.compose.ui.unit.dp
 import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.model.ServicioConPrestador
 import ec.edu.puce.aruy.ui.components.AruyAvatar
+import ec.edu.puce.aruy.ui.components.AruyTarjeta
+import ec.edu.puce.aruy.ui.components.BotonCircular
+import ec.edu.puce.aruy.ui.components.VarianteCircular
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.components.BarraSuperior
 import ec.edu.puce.aruy.ui.components.BotonWhatsApp
 import ec.edu.puce.aruy.ui.components.Calificacion
@@ -107,28 +109,34 @@ fun PrestadorPublicoScreen(
                         .padding(relleno)
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(Espacios.l),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.l)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AruyAvatar(nombre, tamano = 96.dp, fotoUrl = prestador?.fotoPerfil)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
-                            prestador?.oficio?.takeIf { it.isNotBlank() }?.let {
-                                Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Espacios.l)) {
+                            AruyAvatar(nombre, tamano = 88.dp, fotoUrl = prestador?.fotoPerfil)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Espacios.xs)) {
+                                Text(nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+                                prestador?.oficio?.takeIf { it.isNotBlank() }?.let {
+                                    Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
+                            BotonCircular(Icons.Filled.MoreVert, "Más opciones", { hoja = "opciones" }, variante = VarianteCircular.TONAL)
                         }
-                        IconButton(onClick = { hoja = "opciones" }) { Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones") }
-                    }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Calificacion(ui.opiniones?.promedio ?: prestador?.promedio, ui.opiniones?.total ?: prestador?.totalCalificaciones ?: 0)
-                        if (prestador?.disponible != false) Pastilla("Disponible ahora", tipo = TipoPastilla.OK)
-                        else Pastilla("No recibe solicitudes", tipo = TipoPastilla.ADVERTENCIA)
-                        if (prestador?.verificado == true) SelloVerificado(conTexto = true)
-                        prestador?.zona?.takeIf { it.isNotBlank() }?.let { Pastilla("Zona $it") }
-                    }
-                    prestador?.descripcion?.takeIf { it.isNotBlank() }?.let {
-                        Text(it, style = MaterialTheme.typography.bodyLarge)
+                        FlowRow(
+                            modifier = Modifier.padding(top = Espacios.m),
+                            horizontalArrangement = Arrangement.spacedBy(Espacios.s),
+                            verticalArrangement = Arrangement.spacedBy(Espacios.s)
+                        ) {
+                            Calificacion(ui.opiniones?.promedio ?: prestador?.promedio, ui.opiniones?.total ?: prestador?.totalCalificaciones ?: 0)
+                            if (prestador?.disponible != false) Pastilla("Disponible ahora", tipo = TipoPastilla.OK)
+                            else Pastilla("No recibe solicitudes", tipo = TipoPastilla.ADVERTENCIA)
+                            if (prestador?.verificado == true) SelloVerificado(conTexto = true)
+                            prestador?.zona?.takeIf { it.isNotBlank() }?.let { Pastilla("Zona $it") }
+                        }
+                        prestador?.descripcion?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Espacios.m))
+                        }
                     }
                     BotonWhatsApp(
                         "Contactar por WhatsApp",

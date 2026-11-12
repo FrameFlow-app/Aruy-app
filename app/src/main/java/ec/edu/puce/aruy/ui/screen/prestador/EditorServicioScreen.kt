@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.screen.prestador
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -41,7 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import ec.edu.puce.aruy.ui.theme.Espacios
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -67,6 +73,8 @@ import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
+import ec.edu.puce.aruy.ui.components.Pastilla
+import ec.edu.puce.aruy.data.repository.PrestadorRepository
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
 import ec.edu.puce.aruy.ui.components.avisar
 import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
@@ -104,8 +112,8 @@ fun EditorServicioScreen(
                         .weight(1f)
                         .imePadding()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = Espacios.l, vertical = Espacios.s),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.xl)
                 ) {
                     SeccionFotos(
                         ui = ui,
@@ -117,7 +125,7 @@ fun EditorServicioScreen(
                     ui.categoriaSugerida?.takeIf { it != ui.categoria }?.let { sugerida ->
                         AruyTarjeta(tipo = TipoTarjeta.ACENTO, modifier = Modifier.fillMaxWidth()) {
                             Text("Categoría sugerida por la foto: ${sugerida.etiqueta}", style = MaterialTheme.typography.titleMedium)
-                            BotonRelleno("Usar «${sugerida.etiqueta}»", viewModel::usarCategoriaSugerida, modifier = Modifier.padding(top = 8.dp))
+                            BotonRelleno("Usar «${sugerida.etiqueta}»", viewModel::usarCategoriaSugerida, modifier = Modifier.padding(top = Espacios.m))
                         }
                     }
 
@@ -131,9 +139,9 @@ fun EditorServicioScreen(
                         teclado = KeyboardOptions(imeAction = ImeAction.Next)
                     )
 
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Espacios.m)) {
                         Text("Categoría", style = MaterialTheme.typography.titleMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
                             CategoriaServicio.entries.forEach { categoria ->
                                 AruyChip(categoria.etiqueta, ui.categoria == categoria, { viewModel.cambiarCategoria(categoria) })
                             }
@@ -163,12 +171,14 @@ fun EditorServicioScreen(
                         teclado = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done)
                     )
 
-                    AruyInterruptor(
-                        titulo = "Disponible para nuevas solicitudes",
-                        activado = ui.disponible,
-                        onCambio = viewModel::cambiarDisponible,
-                        descripcion = "Si lo pausas, el servicio sigue visible pero se marca como no disponible."
-                    )
+                    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                        AruyInterruptor(
+                            titulo = "Disponible para nuevas solicitudes",
+                            activado = ui.disponible,
+                            onCambio = viewModel::cambiarDisponible,
+                            descripcion = "Si lo pausas, el servicio sigue visible pero se marca como no disponible."
+                        )
+                    }
 
                     ui.progreso?.let {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -217,6 +227,8 @@ fun EditorServicioScreen(
     }
 }
 
+private val TamanoFoto = 120.dp
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SeccionFotos(
@@ -225,14 +237,14 @@ private fun SeccionFotos(
     onQuitarPendiente: (Long) -> Unit,
     onQuitarGuardada: (FotoPortafolio) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Column(verticalArrangement = Arrangement.spacedBy(Espacios.m)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Fotos de tu trabajo", style = MaterialTheme.typography.titleMedium)
-            Text("${ui.totalFotos} de 10", style = MaterialTheme.typography.labelLarge)
+            Pastilla("${ui.totalFotos} de ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO}")
         }
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(Espacios.m)
         ) {
             ui.fotosGuardadas.forEach { foto ->
                 MiniaturaFoto(onQuitar = { onQuitarGuardada(foto) }, descripcion = "Foto guardada del servicio") {
@@ -253,12 +265,25 @@ private fun SeccionFotos(
                 }
             }
             if (ui.totalFotos < 10) {
+                val trazo = MaterialTheme.colorScheme.outline
+                val radio = with(LocalDensity.current) { 20.dp.toPx() }
                 Surface(
                     onClick = onAgregar,
                     enabled = ui.puedeAgregarFoto,
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.size(96.dp)
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier
+                        .size(TamanoFoto)
+                        .drawBehind {
+                            drawRoundRect(
+                                color = trazo,
+                                cornerRadius = CornerRadius(radio),
+                                style = Stroke(
+                                    width = 1.5.dp.toPx(),
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 12f))
+                                )
+                            )
+                        }
                 ) {
                     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         if (ui.analizandoFoto) {
@@ -295,11 +320,11 @@ private fun MiniaturaFoto(
     quitarHabilitado: Boolean = true,
     contenido: @Composable () -> Unit
 ) {
-    Box(Modifier.size(96.dp)) {
+    Box(Modifier.size(TamanoFoto)) {
         Box(
             Modifier
                 .fillMaxSize()
-                .clip(MaterialTheme.shapes.medium)
+                .clip(MaterialTheme.shapes.large)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .semantics { contentDescription = descripcion }
         ) { contenido() }
@@ -310,11 +335,11 @@ private fun MiniaturaFoto(
 @Composable
 private fun EstadoDeLaFoto(pendiente: FotoPendiente) {
     when (val estado = pendiente.estado) {
-        EstadoSubida.Subiendo -> Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+        EstadoSubida.Subiendo -> Box(Modifier.fillMaxSize().background(Superposiciones.veloLeve), contentAlignment = Alignment.Center) {
             LinearProgressIndicator(Modifier.padding(horizontal = 12.dp))
         }
-        is EstadoSubida.Fallo -> Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.ErrorOutline, contentDescription = estado.mensaje, tint = Color.White)
+        is EstadoSubida.Fallo -> Box(Modifier.fillMaxSize().background(Superposiciones.veloFuerte), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.ErrorOutline, contentDescription = estado.mensaje, tint = Superposiciones.tintaSobreVelo)
         }
         EstadoSubida.Pendiente -> Unit
     }
