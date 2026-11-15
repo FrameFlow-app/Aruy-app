@@ -66,6 +66,11 @@ async function consulta(sql, parametros = []) {
     const x = perfiles.find((f) => f.id === p0);
     return { rows: x ? [{ usuario_id: x.usuario_id }] : [] };
   }
+  if (sql.startsWith('INSERT INTO servicios')) {
+    return {
+      rows: [{ id: p0, prestador_id: p1, titulo: p2, descripcion: p3, categoria: p4, precio_referencial: null, disponible: true }],
+    };
+  }
   if (sql.startsWith('INSERT INTO calificaciones')) {
     if (calificaciones.some((c) => c.contratante_id === p1 && c.perfil_prestador_id === p2)) {
       throw Object.assign(new Error('duplicado'), { code: '23505' });

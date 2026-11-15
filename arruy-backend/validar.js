@@ -28,6 +28,15 @@ function limpiarEtiquetas(lista) {
   return [...new Set(lista.map((e) => e.trim()))];
 }
 
+// "LIMPIEZA DE CASAS" o "limpieza de casas" -> "Limpieza de casas": inicial en mayuscula y el resto en minuscula
+// (tambien con acentos y la enie). Los espacios repetidos se juntan.
+function normalizarTitulo(titulo) {
+  const limpio = String(titulo ?? '').trim().replace(/\s+/g, ' ');
+  if (limpio === '') return limpio;
+  const minusculas = limpio.toLocaleLowerCase('es');
+  return minusculas.charAt(0).toLocaleUpperCase('es') + minusculas.slice(1);
+}
+
 module.exports = {
-  esUuid, textoValido, esEmail, esUrlHttps, passwordValida, limpiarEtiquetas, CATEGORIAS, ROLES,
+  normalizarTitulo, esUuid, textoValido, esEmail, esUrlHttps, passwordValida, limpiarEtiquetas, CATEGORIAS, ROLES,
 };
