@@ -32,7 +32,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -71,7 +71,7 @@ fun RegistroScreen(
     onVolver: () -> Unit,
     onIniciarSesion: () -> Unit
 ) {
-    val formulario by viewModel.formulario.collectAsState()
+    val formulario by viewModel.formulario.collectAsStateWithLifecycle()
 
     var paso by rememberSaveable { mutableStateOf(1) }
     var rol by rememberSaveable { mutableStateOf(RolUsuario.CONTRATANTE) }

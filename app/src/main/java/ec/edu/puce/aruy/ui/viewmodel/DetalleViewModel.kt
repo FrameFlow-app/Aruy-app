@@ -2,6 +2,7 @@ package ec.edu.puce.aruy.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
 import ec.edu.puce.aruy.data.repository.CatalogoRepository
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
@@ -54,8 +55,8 @@ class DetalleViewModel(
     val ui: StateFlow<DetalleUi> = _ui.asStateFlow()
 
     /** Avisos de una sola vez ("Opinión publicada. ¡Gracias!") para el snackbar. */
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     init {
         cargar()
@@ -91,13 +92,13 @@ class DetalleViewModel(
                 repositorio.calificar(prestadorId, puntuacion, comentario)
                 val resumen = runCatching { repositorio.opiniones(prestadorId) }.getOrNull()
                 _ui.update { it.copy(enviandoOpinion = false, opiniones = resumen ?: it.opiniones) }
-                _mensajes.tryEmit("Opinión publicada. ¡Gracias!")
+                _mensajes.tryEmit(Aviso.exito("Opinión publicada. ¡Gracias!"))
                 alExito()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(enviandoOpinion = false) }
-                _mensajes.tryEmit(mensajeDeCalificar(e))
+                _mensajes.tryEmit(Aviso.error(mensajeDeCalificar(e)))
             }
         }
     }

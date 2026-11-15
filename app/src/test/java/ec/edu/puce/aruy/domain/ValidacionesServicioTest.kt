@@ -42,4 +42,21 @@ class ValidacionesServicioTest {
             assertNotNull("$texto debía ser inválido", ValidacionesServicio.precio(texto).error)
         }
     }
+
+    @Test
+    fun el_titulo_queda_con_inicial_mayuscula_y_el_resto_en_minuscula() {
+        assertEquals("Limpieza de casas", ValidacionesServicio.normalizarTitulo("LIMPIEZA DE CASAS"))
+        assertEquals("Limpieza de casas", ValidacionesServicio.normalizarTitulo("limpieza de casas"))
+        assertEquals("Limpieza de casas", ValidacionesServicio.normalizarTitulo("  LiMpIeZa   dE  cAsAs  "))
+        assertEquals("Árbol de navidad", ValidacionesServicio.normalizarTitulo("ÁRBOL DE NAVIDAD"))
+        assertEquals("Ñandú y más", ValidacionesServicio.normalizarTitulo("ñandú Y MÁS"))
+        assertEquals("", ValidacionesServicio.normalizarTitulo("   "))
+    }
+
+    @Test
+    fun un_servicio_necesita_al_menos_una_foto() {
+        assertNotNull(ValidacionesServicio.fotos(0))
+        assertNull(ValidacionesServicio.fotos(1))
+        assertNull(ValidacionesServicio.fotos(10))
+    }
 }

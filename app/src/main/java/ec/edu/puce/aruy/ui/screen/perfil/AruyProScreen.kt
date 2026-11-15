@@ -12,12 +12,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.model.EstadoSuscripcion
 import ec.edu.puce.aruy.domain.model.Suscripcion
 import ec.edu.puce.aruy.domain.pro.PlanesPro
@@ -47,7 +47,7 @@ import ec.edu.puce.aruy.ui.viewmodel.AruyProViewModel
 /** Aruy Pro: la suscripción simulada del backend (7 o 30 días, sin cobro real). */
 @Composable
 fun AruyProScreen(viewModel: AruyProViewModel, onVolver: () -> Unit) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmarCancelar by rememberSaveable { mutableStateOf(false) }
 
@@ -104,7 +104,7 @@ fun AruyProScreen(viewModel: AruyProViewModel, onVolver: () -> Unit) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 
     if (confirmarCancelar) {

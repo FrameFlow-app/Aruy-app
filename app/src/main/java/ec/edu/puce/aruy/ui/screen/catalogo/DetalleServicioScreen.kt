@@ -40,7 +40,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -48,7 +47,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.ui.components.Aviso
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
@@ -103,7 +104,7 @@ fun DetalleServicioScreen(
     onPrestador: (String) -> Unit,
     onCuentaRequerida: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
@@ -116,15 +117,15 @@ fun DetalleServicioScreen(
     val servicioId = ui.item?.id
     val esFavorito by remember(servicioId) {
         if (servicioId == null) kotlinx.coroutines.flow.flowOf(false) else actividad.esFavorito(servicioId)
-    }.collectAsState(initial = false)
+    }.collectAsStateWithLifecycle(initialValue = false)
 
     LaunchedEffect(servicioId) { servicioId?.let(actividad::registrarVisto) }
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
 
-    fun avisar(texto: String) { alcance.launch { snackbar.avisar(texto) } }
+    fun avisar(aviso: Aviso) { alcance.launch { snackbar.avisar(aviso) } }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { AvisoHost(snackbar) },
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             ui.item?.let { item ->
@@ -161,7 +162,7 @@ fun DetalleServicioScreen(
                     onVolver = onVolver,
                     onCompartir = { compartir(contexto, item.servicio.titulo) },
                     onFavorito = { actividad.alternarFavorito(item.id, esFavorito) { ahora ->
-                        avisar(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos.")
+                        avisar(Aviso.exito(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos."))
                     } },
                     onMas = { hoja = "opciones" },
                     onAbrirFoto = { fotoAbierta = it }
@@ -235,19 +236,19 @@ fun DetalleServicioScreen(
                     val numero = Contacto.numeroWhatsApp(item.prestador?.telefono)
                     hoja = null
                     if (numero == null) {
-                        avisar("Este prestador no tiene un número de WhatsApp válido.")
+                        avisar(Aviso.error("Este prestador no tiene un número de WhatsApp válido."))
                     } else if (abrirWhatsApp(contexto, numero, mensaje)) {
                         actividad.registrarContacto(item.servicio.prestadorId, item.id, item.nombrePrestador, mensaje)
-                        avisar("Abrimos WhatsApp con tu mensaje. Quedó en tu historial.")
+                        avisar(Aviso.exito("Abrimos WhatsApp con tu mensaje. Quedó en tu historial."))
                     } else {
-                        avisar("No pudimos abrir WhatsApp en este teléfono.")
+                        avisar(Aviso.error("No pudimos abrir WhatsApp en este teléfono."))
                     }
                 },
                 onCopiar = { mensaje ->
                     (contexto.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .setPrimaryClip(ClipData.newPlainText("Mensaje para ${item.nombrePrestador}", mensaje))
                     hoja = null
-                    avisar("Mensaje copiado")
+                    avisar(Aviso.exito("Mensaje copiado"))
                 },
                 onCerrar = { hoja = null }
             )
@@ -262,7 +263,7 @@ fun DetalleServicioScreen(
                 onEnviar = { motivo, detalle ->
                     actividad.reportar("SERVICIO", item.id, item.servicio.titulo, motivo.titulo, detalle)
                     hoja = null
-                    avisar("Reporte guardado en este teléfono.")
+                    avisar(Aviso.exito("Reporte guardado en este teléfono."))
                 },
                 onCerrar = { hoja = null }
             )

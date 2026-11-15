@@ -3,6 +3,7 @@ package ec.edu.puce.aruy.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
 import ec.edu.puce.aruy.data.repository.PrestadorRepository
@@ -58,8 +59,8 @@ class MisServiciosViewModel(
     private val _ui = MutableStateFlow(MisServiciosUi())
     val ui: StateFlow<MisServiciosUi> = _ui.asStateFlow()
 
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 8)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 8)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -118,7 +119,7 @@ class MisServiciosViewModel(
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(recibeSolicitudes = antes) }
-                _mensajes.tryEmit(ApiErrorHandler.obtenerMensaje(e))
+                _mensajes.tryEmit(Aviso.error(ApiErrorHandler.obtenerMensaje(e)))
             }
         }
     }
@@ -128,11 +129,11 @@ class MisServiciosViewModel(
             try {
                 val nuevo = repositorio.cambiarDisponibilidadDelServicio(servicio.id, !servicio.disponible)
                 reemplazar(nuevo)
-                _mensajes.tryEmit(if (nuevo.disponible) "El servicio vuelve a recibir solicitudes." else "El servicio quedó pausado.")
+                _mensajes.tryEmit(Aviso.exito(if (nuevo.disponible) "El servicio vuelve a recibir solicitudes." else "El servicio quedó pausado."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -142,11 +143,11 @@ class MisServiciosViewModel(
             try {
                 repositorio.eliminar(id)
                 _ui.update { estado -> estado.copy(servicios = estado.servicios.filterNot { it.servicio.id == id }) }
-                _mensajes.tryEmit("Servicio eliminado.")
+                _mensajes.tryEmit(Aviso.exito("Servicio eliminado."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -160,11 +161,11 @@ class MisServiciosViewModel(
                         if (it.servicio.id == servicioId) it.copy(fotos = it.fotos.filterNot { f -> f.id == fotoId }) else it
                     })
                 }
-                _mensajes.tryEmit("Quitaste la foto.")
+                _mensajes.tryEmit(Aviso.exito("Quitaste la foto."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -173,7 +174,7 @@ class MisServiciosViewModel(
     fun subirFoto(servicioId: String, uri: Uri, desdeCamara: Boolean) {
         val actual = _ui.value.servicios.firstOrNull { it.servicio.id == servicioId }
         if (actual != null && actual.fotos.size >= PrestadorRepository.MAX_FOTOS_POR_SERVICIO) {
-            _mensajes.tryEmit("Este servicio ya tiene ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO} fotos, el máximo permitido.")
+            _mensajes.tryEmit(Aviso.error("Este servicio ya tiene ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO} fotos, el máximo permitido."))
             return
         }
         _ui.update { it.copy(subiendoFoto = true) }
@@ -188,7 +189,7 @@ class MisServiciosViewModel(
                 )
                 if (revision is ResultadoFoto.Rechazada) {
                     _ui.update { it.copy(subiendoFoto = false) }
-                    _mensajes.tryEmit(revision.mensaje)
+                    _mensajes.tryEmit(Aviso.error(revision.mensaje))
                     return@launch
                 }
                 val foto = repositorio.subirFoto(servicioId, imagen.webp, etiquetas.map { it.texto })
@@ -203,16 +204,18 @@ class MisServiciosViewModel(
                 // Transparencia: se muestra lo que la IA vio en la foto
                 val detectado = etiquetas.take(3).joinToString(", ") { ValidadorFotoOficio.nombrePara(it) }
                 _mensajes.tryEmit(
-                    if (detectado.isNotEmpty()) "Foto agregada a tu portafolio. Detectamos: $detectado." else "Foto agregada a tu portafolio."
+                    Aviso.exito(
+                        if (detectado.isNotEmpty()) "Foto agregada a tu portafolio. Detectamos: $detectado." else "Foto agregada a tu portafolio."
+                    )
                 )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ErrorFoto) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(e.message.orEmpty())
+                _mensajes.tryEmit(Aviso.error(e.message.orEmpty()))
             } catch (e: Exception) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(MensajesPrestador.alSubirFoto(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alSubirFoto(e)))
             } finally {
                 if (desdeCamara) conversor.borrarTemporal(uri)
             }

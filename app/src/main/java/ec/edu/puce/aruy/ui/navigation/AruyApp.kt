@@ -20,12 +20,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +40,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.AppContainer
 import ec.edu.puce.aruy.domain.catalogo.FiltrosCatalogo
 import ec.edu.puce.aruy.domain.catalogo.OrdenCatalogo
@@ -110,7 +110,7 @@ fun AruyApp(contenedor: AppContainer) {
     val rutaActual = Rutas.base(entradaActual?.destination?.route)
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val estadoSesion by contenedor.sesionManager.estado.collectAsState()
+    val estadoSesion by contenedor.sesionManager.estado.collectAsStateWithLifecycle()
     val rol = rolDe(estadoSesion)
     val items = remember(rol) { rol?.let(::itemsDeNavegacion).orEmpty() }
 
@@ -119,12 +119,12 @@ fun AruyApp(contenedor: AppContainer) {
     val buscar: BuscarViewModel = viewModel(factory = contenedor.buscarViewModelFactory)
     val actividad: ActividadLocalViewModel = viewModel(factory = contenedor.actividadLocalViewModelFactory)
     val misServicios: MisServiciosViewModel = viewModel(factory = contenedor.misServiciosViewModelFactory)
-    val misServiciosUi by misServicios.ui.collectAsState()
+    val misServiciosUi by misServicios.ui.collectAsStateWithLifecycle()
 
     var mostrarHojaCuenta by remember { mutableStateOf(false) }
 
     // Aviso "Sin conexión" y reintento automático del catálogo cuando vuelve internet
-    val hayConexion by contenedor.conexion.hayConexion.collectAsState(initial = true)
+    val hayConexion by contenedor.conexion.hayConexion.collectAsStateWithLifecycle(initialValue = true)
     LaunchedEffect(hayConexion) { if (hayConexion) catalogo.recargarSiFallo() }
 
     // Reacciona a los cambios de sesión: entrar, cerrar sesión o vencimiento del token
@@ -135,7 +135,7 @@ fun AruyApp(contenedor: AppContainer) {
         val ruta = Rutas.base(navController.currentDestination?.route)
         when {
             estadoSesion is EstadoSesion.Autenticada && ruta in Rutas.ENTRADA ->
-                navController.irLimpio(rutaInicial(rolDe(estadoSesion)!!))
+                navController.irLimpio(rutaInicial(rolDe(estadoSesion) ?: RolNavegacion.INVITADO))
             estadoSesion is EstadoSesion.SinSesion &&
                 (antes is EstadoSesion.Autenticada || antes is EstadoSesion.Invitado) ->
                 navController.irLimpio(if (contenedor.sesionManager.aviso.value != null) Rutas.LOGIN else Rutas.BIENVENIDA)
@@ -151,7 +151,7 @@ fun AruyApp(contenedor: AppContainer) {
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AvisoHost(snackbarHostState) },
         bottomBar = {
             if (rutaActual in Rutas.CON_BARRA && items.isNotEmpty()) {
                 NavigationBar {
@@ -188,7 +188,7 @@ fun AruyApp(contenedor: AppContainer) {
                         val actual = estadoActualizado
                         navController.irLimpio(
                             when (actual) {
-                                is EstadoSesion.Autenticada -> rutaInicial(rolDe(actual)!!)
+                                is EstadoSesion.Autenticada -> rutaInicial(rolDe(actual) ?: RolNavegacion.INVITADO)
                                 EstadoSesion.Invitado -> Rutas.INICIO
                                 else -> Rutas.BIENVENIDA
                             }

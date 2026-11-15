@@ -28,7 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,8 +68,8 @@ fun InicioScreen(
     onServicio: (String) -> Unit,
     onCrearCuenta: () -> Unit
 ) {
-    val estado by catalogo.catalogo.collectAsState()
-    val vistosIds by actividad.vistosIds.collectAsState()
+    val estado by catalogo.catalogo.collectAsStateWithLifecycle()
+    val vistosIds by actividad.vistosIds.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { catalogo.cargarSiHaceFalta() }
 

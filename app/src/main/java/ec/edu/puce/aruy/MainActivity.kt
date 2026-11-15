@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import ec.edu.puce.aruy.data.local.PreferenciasUi
 import ec.edu.puce.aruy.ui.navigation.AruyApp
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         val contenedor = (application as AruyApplication).contenedor
 
         setContent {
-            val preferencias by contenedor.preferencias.preferencias.collectAsState(initial = PreferenciasUi())
+            val preferencias by contenedor.preferencias.preferencias.collectAsStateWithLifecycle(initialValue = PreferenciasUi())
 
             // Los íconos de las barras del sistema deben verse sobre el tema elegido en Ajustes,
             // no solo sobre el del teléfono (si no, "Oscuro" con el sistema en claro queda ilegible)

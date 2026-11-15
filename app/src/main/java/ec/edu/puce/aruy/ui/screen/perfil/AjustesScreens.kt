@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,6 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil.annotation.ExperimentalCoilApi
 import coil.imageLoader
+import ec.edu.puce.aruy.ui.components.Aviso
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.ui.components.AruyInterruptor
 import ec.edu.puce.aruy.ui.components.AruySegmentado
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
@@ -50,7 +51,7 @@ private fun Subtitulo(texto: String) {
 @OptIn(ExperimentalCoilApi::class)
 @Composable
 fun AjustesScreen(viewModel: AjustesViewModel, onVolver: () -> Unit) {
-    val preferencias by viewModel.preferencias.collectAsState()
+    val preferencias by viewModel.preferencias.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
@@ -101,13 +102,13 @@ fun AjustesScreen(viewModel: AjustesViewModel, onVolver: () -> Unit) {
                     onClick = {
                         contexto.imageLoader.memoryCache?.clear()
                         contexto.imageLoader.diskCache?.clear()
-                        alcance.launch { snackbar.avisar("Listo. La próxima vez se descargan de nuevo.") }
+                        alcance.launch { snackbar.avisar(Aviso.exito("Listo. La próxima vez se descargan de nuevo.")) }
                     },
                     ancho = true
                 )
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }
 

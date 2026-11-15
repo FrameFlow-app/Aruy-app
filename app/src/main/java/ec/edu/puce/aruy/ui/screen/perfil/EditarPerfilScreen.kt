@@ -9,11 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.validation.Validaciones
 import ec.edu.puce.aruy.domain.validation.ValidacionesPerfil
 import ec.edu.puce.aruy.ui.components.AruyCampo
@@ -33,7 +33,7 @@ import ec.edu.puce.aruy.ui.viewmodel.EditarPerfilViewModel
 /** Editar nombre y celular de la cuenta y, si eres prestador, tu perfil público (`editarPerfil` en `perfil.js`). */
 @Composable
 fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
@@ -102,6 +102,6 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }

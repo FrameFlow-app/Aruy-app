@@ -13,7 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -33,7 +33,7 @@ import ec.edu.puce.aruy.ui.viewmodel.BajaCuentaViewModel
  */
 @Composable
 fun BajaCuentaScreen(viewModel: BajaCuentaViewModel, onVolver: () -> Unit) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize()) {
         BarraSuperior("Eliminar mi cuenta", onVolver)

@@ -23,12 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.components.Aviso
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.model.ServicioConPrestador
 import ec.edu.puce.aruy.ui.components.AruyAvatar
@@ -75,7 +76,7 @@ fun PrestadorPublicoScreen(
     onServicio: (String) -> Unit,
     onCuentaRequerida: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
@@ -83,11 +84,11 @@ fun PrestadorPublicoScreen(
     var confirmarBloqueo by rememberSaveable { mutableStateOf(false) }
     var fotoAbierta by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    fun avisar(texto: String) { alcance.launch { snackbar.avisar(texto) } }
+    fun avisar(aviso: Aviso) { alcance.launch { snackbar.avisar(aviso) } }
     LaunchedEffect(Unit) { viewModel.cargar() }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { AvisoHost(snackbar) },
         contentWindowInsets = WindowInsets(0),
         topBar = {
             BarraSuperior("Perfil", onVolver)
@@ -167,7 +168,7 @@ fun PrestadorPublicoScreen(
                 val numero = Contacto.numeroWhatsApp(prestador?.telefono)
                 hoja = null
                 if (numero == null) {
-                    avisar("Este prestador no tiene un número de WhatsApp válido.")
+                    avisar(Aviso.error("Este prestador no tiene un número de WhatsApp válido."))
                 } else {
                     val abierto = try {
                         contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$numero?text=${Uri.encode(mensaje)}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -177,9 +178,9 @@ fun PrestadorPublicoScreen(
                     }
                     if (abierto) {
                         actividad.registrarContacto(perfilId, null, nombre, mensaje)
-                        avisar("Abrimos WhatsApp con tu mensaje. Quedó en tu historial.")
+                        avisar(Aviso.exito("Abrimos WhatsApp con tu mensaje. Quedó en tu historial."))
                     } else {
-                        avisar("No pudimos abrir WhatsApp en este teléfono.")
+                        avisar(Aviso.error("No pudimos abrir WhatsApp en este teléfono."))
                     }
                 }
             },
@@ -187,7 +188,7 @@ fun PrestadorPublicoScreen(
                 (contexto.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
                     .setPrimaryClip(android.content.ClipData.newPlainText("Mensaje para $nombre", mensaje))
                 hoja = null
-                avisar("Mensaje copiado")
+                avisar(Aviso.exito("Mensaje copiado"))
             },
             onCerrar = { hoja = null }
         )
@@ -202,7 +203,7 @@ fun PrestadorPublicoScreen(
             onEnviar = { motivo, detalle ->
                 actividad.reportar("PERFIL", perfilId, nombre, motivo.titulo, detalle)
                 hoja = null
-                avisar("Reporte guardado en este teléfono.")
+                avisar(Aviso.exito("Reporte guardado en este teléfono."))
             },
             onCerrar = { hoja = null }
         )

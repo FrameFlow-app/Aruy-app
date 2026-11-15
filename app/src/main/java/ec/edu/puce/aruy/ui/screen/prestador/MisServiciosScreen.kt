@@ -25,12 +25,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.EstadoVacio
@@ -108,7 +108,7 @@ fun MisServiciosScreen(
     onNuevo: () -> Unit,
     onEditar: (String) -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var porEliminar by rememberSaveable { mutableStateOf<String?>(null) }
     var menuAbierto by rememberSaveable { mutableStateOf<String?>(null) }
@@ -169,7 +169,7 @@ fun MisServiciosScreen(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             )
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 
     val aEliminar = ui.servicios.firstOrNull { it.servicio.id == porEliminar }

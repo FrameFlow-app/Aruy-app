@@ -3,6 +3,7 @@ package ec.edu.puce.aruy.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.local.BorradorServicio
 import ec.edu.puce.aruy.data.local.BorradorStore
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
@@ -58,6 +59,7 @@ data class EditorUi(
     val errorDescripcion: String? = null,
     val errorCategoria: String? = null,
     val errorPrecio: String? = null,
+    val errorFotos: String? = null,
     val fotosGuardadas: List<FotoPortafolio> = emptyList(),
     val pendientes: List<FotoPendiente> = emptyList(),
     val etiquetasUltimaFoto: List<EtiquetaFoto> = emptyList(),
@@ -91,8 +93,8 @@ class EditorServicioViewModel(
     private val _ui = MutableStateFlow(EditorUi(cargando = servicioId != null, servicioId = servicioId))
     val ui: StateFlow<EditorUi> = _ui.asStateFlow()
 
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 8)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 8)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     private var siguienteIdFoto = 0L
     private var guardadoDelBorrador: Job? = null
@@ -124,7 +126,7 @@ class EditorServicioViewModel(
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(cargando = false) }
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -142,7 +144,7 @@ class EditorServicioViewModel(
                     disponible = borrador.disponible
                 )
             }
-            _mensajes.tryEmit("Recuperamos tu borrador.")
+            _mensajes.tryEmit(Aviso.exito("Recuperamos tu borrador."))
         }
     }
 
@@ -177,7 +179,7 @@ class EditorServicioViewModel(
     fun agregarFoto(uri: Uri, desdeCamara: Boolean) {
         if (!_ui.value.puedeAgregarFoto) {
             if (desdeCamara) conversor.borrarTemporal(uri)
-            _mensajes.tryEmit("Un servicio admite como máximo ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO} fotos.")
+            _mensajes.tryEmit(Aviso.error("Un servicio admite como máximo ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO} fotos."))
             return
         }
         _ui.update { it.copy(analizandoFoto = true) }
@@ -189,7 +191,7 @@ class EditorServicioViewModel(
                 val revision = ValidadorFotoOficio.evaluar(etiquetas, _ui.value.categoria, _ui.value.titulo, _ui.value.descripcion)
                 if (revision is ResultadoFoto.Rechazada) {
                     _ui.update { it.copy(analizandoFoto = false, etiquetasUltimaFoto = etiquetas) }
-                    _mensajes.tryEmit(revision.mensaje)
+                    _mensajes.tryEmit(Aviso.error(revision.mensaje))
                     return@launch
                 }
                 val sugerida = SugerenciaCategoria.sugerir(etiquetas)
@@ -198,6 +200,7 @@ class EditorServicioViewModel(
                     it.copy(
                         analizandoFoto = false,
                         pendientes = it.pendientes + pendiente,
+                        errorFotos = null,
                         etiquetasUltimaFoto = etiquetas,
                         categoriaSugerida = sugerida ?: it.categoriaSugerida
                     )
@@ -206,10 +209,10 @@ class EditorServicioViewModel(
                 throw e
             } catch (e: ErrorFoto) {
                 _ui.update { it.copy(analizandoFoto = false) }
-                _mensajes.tryEmit(e.message.orEmpty())
+                _mensajes.tryEmit(Aviso.error(e.message.orEmpty()))
             } catch (e: Exception) {
                 _ui.update { it.copy(analizandoFoto = false) }
-                _mensajes.tryEmit("No se pudo procesar la foto. Prueba con otra.")
+                _mensajes.tryEmit(Aviso.error("No se pudo procesar la foto. Prueba con otra."))
             } finally {
                 if (desdeCamara) conversor.borrarTemporal(uri)
             }
@@ -225,11 +228,11 @@ class EditorServicioViewModel(
             try {
                 repositorio.eliminarFoto(foto.id)
                 _ui.update { it.copy(fotosGuardadas = it.fotosGuardadas.filterNot { f -> f.id == foto.id }) }
-                _mensajes.tryEmit("Quitaste la foto.")
+                _mensajes.tryEmit(Aviso.exito("Quitaste la foto."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -243,13 +246,17 @@ class EditorServicioViewModel(
             errorTitulo = ValidacionesServicio.titulo(u.titulo),
             errorDescripcion = ValidacionesServicio.descripcion(u.descripcion),
             errorCategoria = ValidacionesServicio.categoria(u.categoria),
-            errorPrecio = precio.error
+            errorPrecio = precio.error,
+            errorFotos = ValidacionesServicio.fotos(u.totalFotos)
         )
         _ui.value = errores
-        if (listOf(errores.errorTitulo, errores.errorDescripcion, errores.errorCategoria, errores.errorPrecio).any { it != null }) return
+        errores.errorFotos?.let { _mensajes.tryEmit(Aviso.error(it)) }
+        if (listOf(errores.errorTitulo, errores.errorDescripcion, errores.errorCategoria, errores.errorPrecio, errores.errorFotos).any { it != null }) return
 
-        val datos = DatosServicio(u.titulo, u.descripcion, u.categoria!!, precio.valor, u.disponible)
-        _ui.update { it.copy(guardando = true, progreso = if (it.esEdicion) "Guardando…" else "Publicando…") }
+        val categoria = u.categoria ?: return
+        val titulo = ValidacionesServicio.normalizarTitulo(u.titulo)
+        val datos = DatosServicio(titulo, u.descripcion, categoria, precio.valor, u.disponible)
+        _ui.update { it.copy(titulo = titulo, guardando = true, progreso = if (it.esEdicion) "Guardando…" else "Publicando…") }
         viewModelScope.launch {
             try {
                 val id = u.servicioId?.also { repositorio.editar(it, datos) }
@@ -260,7 +267,7 @@ class EditorServicioViewModel(
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(guardando = false, progreso = null) }
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
@@ -295,12 +302,14 @@ class EditorServicioViewModel(
         }
         if (fallidas == 0) {
             _ui.update { it.copy(guardando = false, progreso = null, finalizado = true) }
-            _mensajes.tryEmit("Servicio guardado.")
+            _mensajes.tryEmit(Aviso.exito("Servicio guardado."))
         } else {
             _ui.update { it.copy(guardando = false, progreso = null) }
             _mensajes.tryEmit(
-                "El servicio se guardó, pero ${if (fallidas == 1) "1 foto no se subió" else "$fallidas fotos no se subieron"}. " +
-                    "Toca \"Guardar cambios\" para reintentar o quítalas."
+                Aviso.error(
+                    "El servicio se guardó, pero ${if (fallidas == 1) "1 foto no se subió" else "$fallidas fotos no se subieron"}. " +
+                        "Toca \"Guardar cambios\" para reintentar o quítalas."
+                )
             )
         }
     }
@@ -317,7 +326,7 @@ class EditorServicioViewModel(
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(guardando = false, progreso = null) }
-                _mensajes.tryEmit(MensajesPrestador.alGuardarServicio(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPrestador.alGuardarServicio(e)))
             }
         }
     }
