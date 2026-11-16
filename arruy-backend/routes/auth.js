@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { registrarError } = require('../registro');
 const { firmarToken } = require('../middleware/auth');
-const { textoValido, esEmail, passwordValida, ROLES } = require('../validar');
+const { edadEnAnios, EDAD_MINIMA, textoValido, esEmail, passwordValida, ROLES } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
 
 const router = express.Router();
@@ -16,11 +16,28 @@ const HASH_FALSO = bcrypt.hashSync('contrasena-falsa-para-igualar-tiempos', 10);
 
 const aUsuario = (u) => ({ ...u, id: String(u.id), telefono: u.telefono ?? '', foto_perfil: urlPublica(u.foto_perfil) });
 
+// La columna usuarios.fecha_nacimiento se agrega con db/001_fecha_nacimiento.sql. Mientras no exista, la edad se
+// valida igual y simplemente no se guarda. Se consulta una sola vez.
+let hayColumnaFecha;
+async function guardaFechaNacimiento(client) {
+  if (hayColumnaFecha === undefined) {
+    try {
+      const r = await client.query(
+        "SELECT 1 FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'fecha_nacimiento'"
+      );
+      hayColumnaFecha = r.rows.length > 0;
+    } catch {
+      return false; // no se recuerda el fallo: se vuelve a preguntar en el siguiente registro
+    }
+  }
+  return hayColumnaFecha;
+}
+
 // Registro. Si el rol es PRESTADOR tambien se crea su perfil (perfiles_prestadores),
 // porque en la base los servicios cuelgan del perfil y no del usuario.
 router.post('/registro', async (req, res) => {
   const {
-    nombre, telefono, email, password, rol,
+    nombre, telefono, email, password, rol, fecha_nacimiento,
     oficio_principal, zona_cobertura, descripcion_profesional, anios_experiencia,
   } = req.body || {};
 
@@ -32,6 +49,14 @@ router.post('/registro', async (req, res) => {
   }
   if (!ROLES.includes(rol)) {
     return res.status(400).json({ error: 'rol debe ser PRESTADOR o CONTRATANTE' });
+  }
+  // Aruy es solo para mayores de edad
+  const edad = edadEnAnios(fecha_nacimiento);
+  if (edad === null || edad < 0 || edad > 120) {
+    return res.status(400).json({ error: 'fecha_nacimiento debe ser una fecha valida con el formato AAAA-MM-DD', campo: 'fecha_nacimiento' });
+  }
+  if (edad < EDAD_MINIMA) {
+    return res.status(400).json({ error: `Aruy es solo para mayores de ${EDAD_MINIMA} anos`, campo: 'fecha_nacimiento' });
   }
   if (rol === 'PRESTADOR') {
     if (!textoValido(oficio_principal, 100)) {
@@ -52,19 +77,30 @@ router.post('/registro', async (req, res) => {
   const client = await pool.connect();
   try {
     const correo = email.trim().toLowerCase();
-    const existe = await client.query('SELECT 1 FROM usuarios WHERE lower(email) = $1', [correo]);
-    if (existe.rows.length > 0) {
-      return res.status(409).json({ error: 'Ese correo ya esta registrado' });
+    const celular = telefono.trim();
+    // Se revisa cada dato por separado para decirle a la persona CUAL esta repetido (el celular tambien es unico)
+    const porCorreo = await client.query('SELECT 1 FROM usuarios WHERE lower(email) = $1', [correo]);
+    if (porCorreo.rows.length > 0) {
+      return res.status(409).json({ error: 'Ese correo ya esta registrado', campo: 'email' });
+    }
+    const porCelular = await client.query('SELECT 1 FROM usuarios WHERE telefono = $1', [celular]);
+    if (porCelular.rows.length > 0) {
+      return res.status(409).json({ error: 'Ese celular ya esta registrado en otra cuenta', campo: 'telefono' });
     }
     const hash = await bcrypt.hash(password, 10);
 
     await client.query('BEGIN');
+    const columnas = ['id', 'nombre', 'telefono', 'rol', 'estado_verificacion', 'foto_perfil', 'activo', 'fecha_registro', 'email', 'password_hash'];
+    const valores = ['$1', '$2', '$3', '$4', "'NO_SOLICITADA'", '$5', 'true', 'NOW()', '$6', '$7'];
+    const parametros = [crypto.randomUUID(), nombre.trim(), celular, rol, null, correo, hash];
+    if (await guardaFechaNacimiento(client)) {
+      columnas.push('fecha_nacimiento');
+      valores.push('$8');
+      parametros.push(fecha_nacimiento.trim());
+    }
     const r = await client.query(
-      `INSERT INTO usuarios
-         (id, nombre, telefono, rol, estado_verificacion, foto_perfil, activo, fecha_registro, email, password_hash)
-       VALUES ($1, $2, $3, $4, 'NO_SOLICITADA', $5, true, NOW(), $6, $7)
-       RETURNING ${COLUMNAS_PUBLICAS}`,
-      [crypto.randomUUID(), nombre.trim(), telefono.trim(), rol, null, correo, hash]
+      `INSERT INTO usuarios (${columnas.join(', ')}) VALUES (${valores.join(', ')}) RETURNING ${COLUMNAS_PUBLICAS}`,
+      parametros
     );
     const u = r.rows[0];
 
@@ -87,6 +123,10 @@ router.post('/registro', async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
     if (e.code === '23505') {
+      // Si dos personas se registran a la vez, la base de datos es quien avisa el duplicado
+      const donde = `${e.constraint || ''} ${e.detail || ''}`.toLowerCase();
+      if (/telefono/.test(donde)) return res.status(409).json({ error: 'Ese celular ya esta registrado en otra cuenta', campo: 'telefono' });
+      if (/email|correo/.test(donde)) return res.status(409).json({ error: 'Ese correo ya esta registrado', campo: 'email' });
       return res.status(409).json({ error: 'El telefono o el correo ya estan registrados' });
     }
     registrarError(e);

@@ -40,11 +40,29 @@ const sinHash = (u) => {
 
 async function consulta(sql, parametros = []) {
   sql = sql.replace(/\s+/g, ' ').trim();
-  const [p0, p1, p2, p3, p4] = parametros;
+  const [p0, p1, p2, p3, p4, p5, p6, p7] = parametros;
   if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rows: [] };
   if (sql.includes('password_hash FROM usuarios WHERE lower(email)')) {
     const u = usuarios.get(p0);
     return { rows: u ? [{ ...u }] : [] };
+  }
+  if (sql.startsWith('SELECT 1 FROM information_schema.columns')) {
+    // AYUDA_SIN_COLUMNA_FECHA=1 simula una base a la que todavia no se le aplico db/001_fecha_nacimiento.sql
+    return { rows: process.env.AYUDA_SIN_COLUMNA_FECHA ? [] : [{ '?column?': 1 }] };
+  }
+  if (sql.startsWith('SELECT 1 FROM usuarios WHERE lower(email)')) {
+    return { rows: usuarios.has(p0) ? [{ '?column?': 1 }] : [] };
+  }
+  if (sql.startsWith('SELECT 1 FROM usuarios WHERE telefono')) {
+    return { rows: [...usuarios.values()].some((u) => u.telefono === p0) ? [{ '?column?': 1 }] : [] };
+  }
+  if (sql.startsWith('INSERT INTO usuarios')) {
+    const nuevo = {
+      id: p0, nombre: p1, telefono: p2, rol: p3, estado_verificacion: 'NO_SOLICITADA', foto_perfil: p4, activo: true, password_hash: p6,
+    };
+    if (sql.includes('fecha_nacimiento')) nuevo.fecha_nacimiento = p7;
+    usuarios.set(p5, nuevo);
+    return { rows: [sinHash(nuevo)] };
   }
   if (sql.startsWith('SELECT id FROM perfiles_prestadores WHERE usuario_id')) {
     return { rows: perfiles.filter((x) => x.usuario_id === p0).map((x) => ({ id: x.id })) };

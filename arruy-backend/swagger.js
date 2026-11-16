@@ -61,7 +61,7 @@ const paths = {
       summary: 'Crear una cuenta',
       description:
         'Si el rol es `PRESTADOR` también se crea su perfil, por eso son obligatorios `oficio_principal` y `zona_cobertura`. ' +
-        'Para `CONTRATANTE` se ignoran. Límite: 30 registros cada 15 minutos por red.',
+        'Para `CONTRATANTE` se ignoran. Solo se aceptan **mayores de 18 años** (`fecha_nacimiento`). Límite: 30 registros cada 15 minutos por red.',
       requestBody: {
         required: true,
         content: {
@@ -73,6 +73,7 @@ const paths = {
                 value: {
                   nombre: 'PRUEBA Prestador',
                   telefono: '0991234567',
+                  fecha_nacimiento: '1995-06-15',
                   email: 'prestador@example.com',
                   password: 'ClaveSegura123',
                   rol: 'PRESTADOR',
@@ -86,6 +87,7 @@ const paths = {
                 value: {
                   nombre: 'PRUEBA Cliente',
                   telefono: '0997654321',
+                  fecha_nacimiento: '1998-03-25',
                   email: 'cliente@example.com',
                   password: 'ClaveSegura123',
                   rol: 'CONTRATANTE',
@@ -343,10 +345,11 @@ const components = {
     Error: { type: 'object', properties: { error: { type: 'string', example: 'Id invalido' } } },
     Registro: {
       type: 'object',
-      required: ['nombre', 'telefono', 'email', 'password', 'rol'],
+      required: ['nombre', 'telefono', 'email', 'password', 'rol', 'fecha_nacimiento'],
       properties: {
         nombre: { type: 'string', maxLength: 100 },
         telefono: { type: 'string', maxLength: 20, description: 'Debe ser único' },
+        fecha_nacimiento: { type: 'string', format: 'date', example: '1995-06-15', description: 'Formato AAAA-MM-DD. Aruy es solo para mayores de 18 años' },
         email: { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 8, description: 'Mínimo 8 caracteres' },
         rol: { type: 'string', enum: ['PRESTADOR', 'CONTRATANTE'] },
