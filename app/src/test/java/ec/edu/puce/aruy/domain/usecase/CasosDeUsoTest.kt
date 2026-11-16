@@ -3,6 +3,7 @@ package ec.edu.puce.aruy.domain.usecase
 import ec.edu.puce.aruy.domain.catalogo.EtiquetaFoto
 import ec.edu.puce.aruy.domain.catalogo.ResultadoFoto
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
+import ec.edu.puce.aruy.domain.model.DatosPrestador
 import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.domain.model.DatosServicio
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
@@ -15,6 +16,7 @@ import ec.edu.puce.aruy.domain.model.Sesion
 import ec.edu.puce.aruy.domain.model.Usuario
 import ec.edu.puce.aruy.domain.repository.AuthRepository
 import ec.edu.puce.aruy.domain.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.repository.FotoPerfilRepository
 import ec.edu.puce.aruy.domain.repository.PrestadorRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -41,6 +43,7 @@ class CasosDeUsoTest {
     private inner class AuthFalso : AuthRepository {
         var correoRecibido: String? = null
         var datosRecibidos: DatosRegistro? = null
+        var prestadorRecibido: DatosPrestador? = null
         override suspend fun iniciarSesion(correo: String, password: String): Sesion {
             correoRecibido = correo
             return sesionDePrueba
@@ -49,6 +52,11 @@ class CasosDeUsoTest {
         override suspend fun registrar(datos: DatosRegistro): Sesion {
             datosRecibidos = datos
             return sesionDePrueba
+        }
+
+        override suspend fun activarPerfilPrestador(datos: DatosPrestador): Sesion {
+            prestadorRecibido = datos
+            return sesionDePrueba.copy(usuario = sesionDePrueba.usuario.copy(rol = RolUsuario.PRESTADOR), perfilPrestadorId = "perfil-nuevo")
         }
 
         override suspend fun cerrarSesion() = Unit
@@ -95,6 +103,21 @@ class CasosDeUsoTest {
         }
 
         override suspend fun eliminarFoto(fotoId: String) = Unit
+    }
+
+    private class FotoPerfilFalsa : FotoPerfilRepository {
+        var bytesRecibidos: Int? = null
+        var quitada = false
+        private val base = Usuario("u1", "Ana", "0991111111", RolUsuario.CONTRATANTE)
+        override suspend fun subirFoto(webp: ByteArray): Usuario {
+            bytesRecibidos = webp.size
+            return base.copy(fotoPerfil = "https://fotos.test/perfiles/u1/f.webp")
+        }
+
+        override suspend fun quitarFoto(): Usuario {
+            quitada = true
+            return base.copy(fotoPerfil = null)
+        }
     }
 
     private val datos = DatosServicio("LIMPIEZA DE CASAS", "Limpio casas completas con productos propios", CategoriaServicio.OTROS, null, true)
@@ -154,6 +177,71 @@ class CasosDeUsoTest {
             assertNotNull(e.message)
         }
         assertNull(auth.datosRecibidos)
+    }
+
+    // ---------------- "Quiero ofrecer servicios" ----------------
+
+    @Test
+    fun activar_el_perfil_de_prestador_usa_la_misma_cuenta_y_devuelve_la_sesion_de_prestador() = runBlocking {
+        val auth = AuthFalso()
+        val sesion = ActivarPerfilPrestadorUseCase(auth)(DatosPrestador("Manicure", "Norte", aniosExperiencia = 3))
+        assertEquals(RolUsuario.PRESTADOR, sesion.usuario.rol)
+        assertEquals("perfil-nuevo", sesion.perfilPrestadorId)
+        assertEquals("u1", sesion.usuario.id)
+        assertEquals("Manicure", auth.prestadorRecibido?.oficio)
+    }
+
+    @Test
+    fun activar_el_perfil_sin_oficio_o_sin_zona_se_rechaza_y_no_llega_al_repositorio() = runBlocking {
+        val auth = AuthFalso()
+        for (datos in listOf(DatosPrestador("", "Norte"), DatosPrestador("Manicure", "   "))) {
+            try {
+                ActivarPerfilPrestadorUseCase(auth)(datos)
+                fail("Debía rechazar $datos")
+            } catch (e: IllegalArgumentException) {
+                assertNotNull(e.message)
+            }
+        }
+        assertNull(auth.prestadorRecibido)
+    }
+
+    // ---------------- foto de perfil ----------------
+
+    @Test
+    fun subir_la_foto_de_perfil_devuelve_el_usuario_con_su_foto() = runBlocking {
+        val fotos = FotoPerfilFalsa()
+        val usuario = SubirFotoPerfilUseCase(fotos)(ByteArray(1000))
+        assertEquals("https://fotos.test/perfiles/u1/f.webp", usuario.fotoPerfil)
+        assertEquals(1000, fotos.bytesRecibidos)
+    }
+
+    @Test
+    fun una_foto_vacia_o_demasiado_grande_se_rechaza_sin_llegar_al_repositorio() = runBlocking {
+        val fotos = FotoPerfilFalsa()
+        for (bytes in listOf(ByteArray(0), ByteArray(SubirFotoPerfilUseCase.TAMANO_MAXIMO + 1))) {
+            try {
+                SubirFotoPerfilUseCase(fotos)(bytes)
+                fail("Debía rechazar una foto de ${bytes.size} bytes")
+            } catch (e: IllegalArgumentException) {
+                assertNotNull(e.message)
+            }
+        }
+        assertNull(fotos.bytesRecibidos)
+    }
+
+    @Test
+    fun una_foto_justo_en_el_limite_se_acepta() = runBlocking {
+        val fotos = FotoPerfilFalsa()
+        SubirFotoPerfilUseCase(fotos)(ByteArray(SubirFotoPerfilUseCase.TAMANO_MAXIMO))
+        assertEquals(SubirFotoPerfilUseCase.TAMANO_MAXIMO, fotos.bytesRecibidos)
+    }
+
+    @Test
+    fun quitar_la_foto_de_perfil_vuelve_a_las_iniciales() = runBlocking {
+        val fotos = FotoPerfilFalsa()
+        val usuario = QuitarFotoPerfilUseCase(fotos)()
+        assertNull(usuario.fotoPerfil)
+        assertTrue(fotos.quitada)
     }
 
     // ---------------- catálogo ----------------

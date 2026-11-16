@@ -2,10 +2,12 @@ package ec.edu.puce.aruy.data.repository
 
 import ec.edu.puce.aruy.data.mapper.toDomain
 import ec.edu.puce.aruy.data.remote.api.AuthApi
+import ec.edu.puce.aruy.data.remote.dto.ActivarPerfilRequest
 import ec.edu.puce.aruy.data.remote.dto.AuthRespuestaDto
 import ec.edu.puce.aruy.data.remote.dto.LoginRequest
 import ec.edu.puce.aruy.data.remote.dto.RegistroRequest
 import ec.edu.puce.aruy.data.sesion.SesionManager
+import ec.edu.puce.aruy.domain.model.DatosPrestador
 import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.domain.model.RolUsuario
 import ec.edu.puce.aruy.domain.model.Sesion
@@ -37,6 +39,18 @@ class AuthRepositoryImpl(
             )
         )
         return guardar(respuesta)
+    }
+
+    override suspend fun activarPerfilPrestador(datos: DatosPrestador): Sesion {
+        val respuesta = authApi.activarPerfil(
+            ActivarPerfilRequest(
+                oficioPrincipal = datos.oficio.trim(),
+                zonaCobertura = datos.zona.trim(),
+                descripcionProfesional = datos.descripcion?.trim()?.takeIf { it.isNotEmpty() },
+                aniosExperiencia = datos.aniosExperiencia
+            )
+        )
+        return guardar(respuesta) // el token nuevo y el rol PRESTADOR reemplazan a los anteriores
     }
 
     private suspend fun guardar(respuesta: AuthRespuestaDto): Sesion {

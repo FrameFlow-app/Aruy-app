@@ -1,5 +1,14 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import ec.edu.puce.aruy.util.ErrorFoto
+import ec.edu.puce.aruy.util.ConversorWebp
+import ec.edu.puce.aruy.ui.components.Aviso
+import ec.edu.puce.aruy.domain.usecase.SubirFotoPerfilUseCase
+import ec.edu.puce.aruy.data.remote.util.MensajesPerfil
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -31,12 +40,22 @@ data class EstadoFormularioAuth(
     val errorFechaNacimiento: String? = null
 )
 
+/** La foto que la persona eligió al crear su cuenta; se sube justo después de registrarla. */
+class FotoElegida(val uri: Uri, val desdeCamara: Boolean)
+
 class AuthViewModel(
     private val repositorio: AuthRepository,
     private val iniciarSesionCaso: IniciarSesionUseCase,
     private val registrarCuentaCaso: RegistrarCuentaUseCase,
+    private val conversor: ConversorWebp,
+    private val subirFotoPerfil: SubirFotoPerfilUseCase,
     private val sesionManager: SesionManager
 ) : ViewModel() {
+
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
+
+    /** Avisos que pasan después de salir del formulario (por ejemplo, si la foto de perfil no se pudo subir). */
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     val estadoSesion = sesionManager.estado
     val aviso: StateFlow<String?> = sesionManager.aviso
@@ -51,10 +70,30 @@ class AuthViewModel(
         }
     }
 
-    fun registrar(datos: DatosRegistro, alExito: (Sesion) -> Unit) {
+    fun registrar(datos: DatosRegistro, foto: FotoElegida? = null, alExito: (Sesion) -> Unit) {
         ejecutar(::mensajeDeRegistro) {
             val sesion = registrarCuentaCaso(datos)
             alExito(sesion)
+            // La cuenta ya existe: si la foto falla no se deshace nada, solo se avisa
+            if (foto != null) viewModelScope.launch { subirFotoDeRegistro(foto) }
+        }
+    }
+
+    private suspend fun subirFotoDeRegistro(foto: FotoElegida) {
+        try {
+            val imagen = conversor.convertir(foto.uri)
+            val usuario = subirFotoPerfil(imagen.webp)
+            sesionManager.actualizarUsuario(usuario)
+            _mensajes.tryEmit(Aviso.exito("¡Cuenta creada! Tu foto de perfil ya está lista."))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val motivo = if (e is ErrorFoto) e.message.orEmpty() else MensajesPerfil.alCambiarFoto(e)
+            _mensajes.tryEmit(
+                Aviso.error("Tu cuenta se creó, pero la foto no se pudo subir. $motivo Puedes agregarla desde Editar perfil.")
+            )
+        } finally {
+            if (foto.desdeCamara) conversor.borrarTemporal(foto.uri)
         }
     }
 
@@ -139,12 +178,14 @@ class AuthViewModel(
             repositorio: AuthRepository,
             iniciarSesion: IniciarSesionUseCase,
             registrarCuenta: RegistrarCuentaUseCase,
+            conversor: ConversorWebp,
+            subirFotoPerfil: SubirFotoPerfilUseCase,
             sesionManager: SesionManager
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AuthViewModel(repositorio, iniciarSesion, registrarCuenta, sesionManager) as T
+                    AuthViewModel(repositorio, iniciarSesion, registrarCuenta, conversor, subirFotoPerfil, sesionManager) as T
             }
     }
 }

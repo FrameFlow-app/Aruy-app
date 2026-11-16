@@ -1,5 +1,8 @@
 package ec.edu.puce.aruy.ui.components
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -127,7 +130,7 @@ fun Pastilla(texto: String, modifier: Modifier = Modifier, tipo: TipoPastilla = 
 
 /** Avatar con iniciales y 5 tonos (`avatar` + `data-tone`). El tono sale del texto, así es estable. */
 @Composable
-fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp) {
+fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp, fotoUrl: String? = null) {
     val esquema = MaterialTheme.colorScheme
     val colores = AruyTheme.colores
     val tonos = listOf(
@@ -153,6 +156,14 @@ fun AruyAvatar(nombre: String, modifier: Modifier = Modifier, tamano: Dp = 48.dp
             fontWeight = FontWeight.Bold,
             fontSize = (tamano.value * 0.38f).sp
         )
+        if (!fotoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = fotoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 

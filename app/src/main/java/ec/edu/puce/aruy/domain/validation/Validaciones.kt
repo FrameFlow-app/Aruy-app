@@ -49,6 +49,17 @@ object Validaciones {
     /** Resultado de leer la fecha de nacimiento: la [fecha] si es válida y mayor de edad, o el [error] que se muestra. */
     data class FechaNacimiento(val fecha: LocalDate?, val error: String?)
 
+    /** Años de experiencia: es opcional; si se escribe, un número entre 0 y 80. */
+    data class AniosExperiencia(val valor: Int?, val error: String?)
+
+    fun aniosExperiencia(texto: String): AniosExperiencia {
+        val limpio = texto.trim()
+        if (limpio.isEmpty()) return AniosExperiencia(null, null)
+        val numero = limpio.toIntOrNull()
+        return if (numero != null && numero in 0..80) AniosExperiencia(numero, null)
+        else AniosExperiencia(null, "Escribe un número entre 0 y 80, o déjalo vacío.")
+    }
+
     /** Mientras se escribe, deja solo números y pone las barras: "25032000" -> "25/03/2000". */
     fun formatearFecha(entrada: String): String {
         val digitos = entrada.filter { it.isDigit() }.take(8)

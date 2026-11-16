@@ -1,5 +1,16 @@
 package ec.edu.puce.aruy.ui.navigation
 
+import kotlinx.coroutines.delay
+import ec.edu.puce.aruy.ui.viewmodel.SolicitudesViewModel
+import ec.edu.puce.aruy.ui.screen.solicitudes.SolicitudesScreen
+import ec.edu.puce.aruy.domain.model.ResumenSolicitudes
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import ec.edu.puce.aruy.ui.viewmodel.ActivarPrestadorViewModel
+import ec.edu.puce.aruy.ui.screen.perfil.ActivarPrestadorScreen
+import ec.edu.puce.aruy.ui.components.avisar
+import ec.edu.puce.aruy.ui.components.Aviso
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,7 +115,12 @@ private fun NavController.irLimpio(ruta: String) = navigate(ruta) {
  * Las pantallas del prestador muestran un aviso hasta que se construyan en las próximas fases.
  */
 @Composable
-fun AruyApp(contenedor: AppContainer) {
+fun AruyApp(
+    contenedor: AppContainer,
+    /** Pantalla que pidió abrir una notificación (por ejemplo, Mis solicitudes). */
+    abrirRuta: String? = null,
+    alAbrirRuta: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = Rutas.base(entradaActual?.destination?.route)
@@ -122,6 +138,61 @@ fun AruyApp(contenedor: AppContainer) {
     val misServiciosUi by misServicios.ui.collectAsStateWithLifecycle()
 
     var mostrarHojaCuenta by remember { mutableStateOf(false) }
+
+    // ---- Solicitudes: el numerito, los avisos dentro de la app y la consulta cuando la app está cerrada ----
+    val resumenSolicitudes by contenedor.resumenSolicitudes.resumen.collectAsStateWithLifecycle()
+    val propietarioCiclo = LocalLifecycleOwner.current
+    val estadoDeSesion = when (estadoSesion) {
+        is EstadoSesion.Autenticada -> 1
+        EstadoSesion.Cargando -> 0
+        else -> 2
+    }
+    LaunchedEffect(estadoDeSesion) {
+        when (estadoDeSesion) {
+            1 -> {
+                contenedor.programadorAvisos.activar()
+                // Mientras la app está a la vista, se pregunta cada 45 segundos (se detiene sola en segundo plano)
+                propietarioCiclo.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    while (true) {
+                        contenedor.resumenSolicitudes.refrescar()
+                        delay(INTERVALO_SOLICITUDES_MS)
+                    }
+                }
+            }
+            2 -> {
+                contenedor.resumenSolicitudes.limpiar()
+                contenedor.programadorAvisos.desactivar()
+                contenedor.avisosSolicitudesStore.borrar()
+            }
+            else -> Unit // todavía se está leyendo la sesión guardada: no se toca nada
+        }
+    }
+    LaunchedEffect(Unit) {
+        contenedor.resumenSolicitudes.llegaron.collect { nuevo ->
+            if (Rutas.base(navController.currentDestination?.route) != Rutas.SOLICITUDES) {
+                snackbarHostState.avisar(Aviso.exito(textoDeLlegada(nuevo)))
+            }
+        }
+    }
+    // Al tocar una notificación se abre la pantalla que pidió (cuando ya terminó el splash y hay sesión)
+    LaunchedEffect(abrirRuta, estadoDeSesion, rutaActual) {
+        if (abrirRuta != null && estadoDeSesion == 1 && rutaActual != Rutas.SPLASH) {
+            navController.navigate(abrirRuta)
+            alAbrirRuta()
+        }
+    }
+
+    // Avisos que llegan cuando la pantalla de registro ya se cerró (por ejemplo, el resultado de subir la foto de perfil)
+    LaunchedEffect(Unit) { authViewModel.mensajes.collect { snackbarHostState.avisar(it) } }
+
+    // "Quiero ofrecer servicios": al pasar de contratante a prestador se avisa en verde, aunque la pantalla ya se haya cerrado
+    var rolAnterior by remember { mutableStateOf(rol) }
+    LaunchedEffect(rol) {
+        if (rolAnterior == RolNavegacion.CONTRATANTE && rol == RolNavegacion.PRESTADOR) {
+            snackbarHostState.avisar(Aviso.exito("¡Listo! Ahora también puedes ofrecer tus servicios."))
+        }
+        rolAnterior = rol
+    }
 
     // Aviso "Sin conexión" y reintento automático del catálogo cuando vuelve internet
     val hayConexion by contenedor.conexion.hayConexion.collectAsStateWithLifecycle(initialValue = true)
@@ -236,7 +307,11 @@ fun AruyApp(contenedor: AppContainer) {
                                 navController.navigate(Rutas.buscar())
                             },
                             onServicio = abrirServicio,
-                            onCrearCuenta = { navController.navigate(Rutas.REGISTRO) }
+                            onCrearCuenta = { navController.navigate(Rutas.REGISTRO) },
+                            puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
+                            onOfrecer = { navController.navigate(Rutas.OFRECER) },
+                            solicitudesNuevas = resumenSolicitudes.nuevas,
+                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
                         )
                     }
                 }
@@ -288,9 +363,33 @@ fun AruyApp(contenedor: AppContainer) {
                                 onReportes = { navController.navigate(Rutas.REPORTES) },
                                 onNormas = { navController.navigate(Rutas.NORMAS) },
                                 onBaja = { navController.navigate(Rutas.BAJA) },
-                                onCerrarSesion = authViewModel::cerrarSesion
+                                onCerrarSesion = authViewModel::cerrarSesion,
+                                puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
+                                onOfrecer = { navController.navigate(Rutas.OFRECER) },
+                                solicitudesNuevas = resumenSolicitudes.nuevas,
+                                onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
                             )
                         }
+                    }
+                }
+                composable(Rutas.SOLICITUDES) {
+                    Protegida(Rutas.SOLICITUDES, rol, irAlInicio) {
+                        val vm: SolicitudesViewModel = viewModel(factory = contenedor.solicitudesViewModelFactory)
+                        SolicitudesScreen(
+                            viewModel = vm,
+                            onVolver = { navController.popBackStack() },
+                            onVerServicio = abrirServicio
+                        )
+                    }
+                }
+                composable(Rutas.OFRECER) {
+                    Protegida(Rutas.OFRECER, rol, irAlInicio) {
+                        val vm: ActivarPrestadorViewModel = viewModel(factory = contenedor.activarPrestadorViewModelFactory)
+                        ActivarPrestadorScreen(
+                            viewModel = vm,
+                            onVolver = { navController.popBackStack() },
+                            onListo = { navController.irLimpio(Rutas.PANEL) }
+                        )
                     }
                 }
                 composable(Rutas.EDITAR_PERFIL) {
@@ -336,7 +435,7 @@ fun AruyApp(contenedor: AppContainer) {
                     val id = entrada.arguments?.getString("id").orEmpty()
                     Protegida(Rutas.SERVICIO, rol, irAlInicio) {
                         val vm: DetalleViewModel = viewModel(
-                            factory = fabricaVm { DetalleViewModel(id, catalogo.servicioPorId(id), contenedor.catalogoRepository) }
+                            factory = fabricaVm { DetalleViewModel(id, catalogo.servicioPorId(id), contenedor.catalogoRepository, contenedor.enviarSolicitudCaso) }
                         )
                         DetalleServicioScreen(
                             viewModel = vm,
@@ -389,7 +488,10 @@ fun AruyApp(contenedor: AppContainer) {
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre.orEmpty(),
                             onNuevoServicio = { navController.navigate(Rutas.editor()) },
                             onVerServicios = { navController.navigate(Rutas.MIS_SERVICIOS) },
-                            onEditar = { navController.navigate(Rutas.editor(it)) }
+                            onEditar = { navController.navigate(Rutas.editor(it)) },
+                            solicitudesPorResponder = resumenSolicitudes.recibidasPendientes,
+                            solicitudesNuevas = resumenSolicitudes.recibidasNuevas,
+                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
                         )
                     }
                 }
@@ -477,4 +579,13 @@ private fun Protegida(
         !rutaPermitida(ruta, rol) -> AccesoDenegadoScreen(rol, irAlInicio)
         else -> contenido()
     }
+}
+
+/** Cada cuánto se pregunta por solicitudes nuevas mientras la app está a la vista. */
+private const val INTERVALO_SOLICITUDES_MS = 45_000L
+
+private fun textoDeLlegada(resumen: ResumenSolicitudes): String = when {
+    resumen.recibidasNuevas == 1 -> "Tienes una solicitud nueva. Mírala en Mis solicitudes."
+    resumen.recibidasNuevas > 1 -> "Tienes ${resumen.recibidasNuevas} solicitudes nuevas. Míralas en Mis solicitudes."
+    else -> "Respondieron tu solicitud. Mírala en Mis solicitudes."
 }

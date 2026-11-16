@@ -1,5 +1,8 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import ec.edu.puce.aruy.ui.components.rememberPedirNotificaciones
+import ec.edu.puce.aruy.ui.components.BotonRelleno
+import androidx.compose.material.icons.automirrored.filled.Send
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -108,6 +111,7 @@ fun DetalleServicioScreen(
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
+    val pedirNotificaciones = rememberPedirNotificaciones()
 
     var pestana by rememberSaveable { mutableStateOf(0) }
     var hoja by rememberSaveable { mutableStateOf<String?>(null) }
@@ -133,7 +137,8 @@ fun DetalleServicioScreen(
                     nombre = item.nombrePrestador,
                     tieneTelefono = Contacto.numeroWhatsApp(item.prestador?.telefono) != null,
                     disponible = FiltroCatalogo.disponibleAhora(item),
-                    onContactar = { hoja = "contactar" }
+                    onContactar = { hoja = "contactar" },
+                    onSolicitar = { if (rol == RolNavegacion.INVITADO) onCuentaRequerida() else hoja = "solicitar" }
                 )
             }
         }
@@ -188,7 +193,7 @@ fun DetalleServicioScreen(
 
                     AruyTarjeta(onClick = { onPrestador(item.servicio.prestadorId) }, modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            AruyAvatar(item.nombrePrestador, tamano = 48.dp)
+                            AruyAvatar(item.nombrePrestador, tamano = 48.dp, fotoUrl = item.prestador?.fotoPerfil)
                             Column {
                                 Text(item.nombrePrestador, style = MaterialTheme.typography.titleMedium)
                                 val detalle = listOfNotNull(
@@ -227,6 +232,18 @@ fun DetalleServicioScreen(
     val item = ui.item
     if (item != null) {
         when (hoja) {
+            "solicitar" -> HojaNuevaSolicitud(
+                nombre = item.nombrePrestador,
+                tituloServicio = item.servicio.titulo,
+                enviando = ui.enviandoSolicitud,
+                onEnviar = { mensaje ->
+                    viewModel.enviarSolicitud(mensaje) {
+                        hoja = null
+                        pedirNotificaciones() // "te avisamos cuando responda": ahora sí tiene sentido pedir el permiso
+                    }
+                },
+                onCerrar = { hoja = null }
+            )
             "contactar" -> HojaContactar(
                 nombre = item.nombrePrestador,
                 oficio = item.prestador?.oficio,
@@ -314,7 +331,13 @@ private fun compartir(contexto: Context, titulo: String) {
 }
 
 @Composable
-private fun BarraContacto(nombre: String, tieneTelefono: Boolean, disponible: Boolean, onContactar: () -> Unit) {
+private fun BarraContacto(
+    nombre: String,
+    tieneTelefono: Boolean,
+    disponible: Boolean,
+    onContactar: () -> Unit,
+    onSolicitar: () -> Unit
+) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
         Column(
             Modifier
@@ -330,6 +353,7 @@ private fun BarraContacto(nombre: String, tieneTelefono: Boolean, disponible: Bo
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            BotonRelleno("Enviar solicitud en Aruy", onSolicitar, icono = Icons.AutoMirrored.Filled.Send, grande = true, ancho = true, habilitado = disponible)
             BotonWhatsApp("Contactar por WhatsApp", onContactar, icono = Icons.AutoMirrored.Filled.Chat, habilitado = tieneTelefono)
             if (!tieneTelefono) {
                 Text(

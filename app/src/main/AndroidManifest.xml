@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Solo para saber si hay conexión y mostrar "Sin conexión"; no da acceso a datos de la red -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Para avisar cuando te piden un servicio o responden tu solicitud (se pide cuando sirve de algo, no al abrir la app) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".AruyApplication"
@@ -20,6 +22,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Aruy">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

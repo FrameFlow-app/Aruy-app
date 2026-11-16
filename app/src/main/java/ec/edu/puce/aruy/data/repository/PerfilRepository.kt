@@ -1,5 +1,7 @@
 package ec.edu.puce.aruy.data.repository
 
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
 import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import ec.edu.puce.aruy.data.mapper.toDomain
@@ -9,6 +11,7 @@ import ec.edu.puce.aruy.data.remote.dto.EditarUsuarioRequest
 import ec.edu.puce.aruy.data.remote.dto.PerfilPropioDto
 import ec.edu.puce.aruy.domain.model.PerfilPrestador
 import ec.edu.puce.aruy.domain.model.Usuario
+import ec.edu.puce.aruy.domain.repository.FotoPerfilRepository
 import ec.edu.puce.aruy.domain.validation.Validaciones
 
 /** Mis datos de cuenta: el correo solo lo devuelve `GET /usuarios/yo`. */
@@ -26,7 +29,7 @@ data class DatosPerfilPrestador(
 class PerfilRepository(
     private val usuarioApi: UsuarioApi,
     private val prestadorApi: PrestadorApi
-) {
+) : FotoPerfilRepository {
 
     suspend fun misDatos(): MisDatos {
         val dto = usuarioApi.miUsuario()
@@ -42,6 +45,14 @@ class PerfilRepository(
 
     suspend fun actualizarMiPerfil(datos: DatosPerfilPrestador): PerfilPrestador =
         prestadorApi.editarMiPerfil(PrestadorRepositoryImpl.comoJson(cuerpoDePerfil(datos))).toPerfil()
+
+    override suspend fun subirFoto(webp: ByteArray): Usuario =
+        usuarioApi.subirMiFoto(webp.toRequestBody("image/webp".toMediaType())).toDomain()
+
+    override suspend fun quitarFoto(): Usuario {
+        val cuerpo = JsonObject().apply { add("foto_perfil", JsonNull.INSTANCE) }
+        return usuarioApi.editarMiUsuarioJson(PrestadorRepositoryImpl.comoJson(cuerpo)).toDomain()
+    }
 
     /** El servidor borra la cuenta y todos sus datos (servicios, fotos, opiniones y suscripción). */
     suspend fun eliminarCuenta() = usuarioApi.eliminarMiCuenta()

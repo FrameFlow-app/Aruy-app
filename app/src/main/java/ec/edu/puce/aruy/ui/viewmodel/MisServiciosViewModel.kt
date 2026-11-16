@@ -67,7 +67,8 @@ class MisServiciosViewModel(
 
     init {
         viewModelScope.launch {
-            sesion.estado.map { (it as? EstadoSesion.Autenticada)?.sesion?.usuario?.id }
+            // La cuenta y su perfil de prestador: al pasar de contratante a prestador (misma cuenta) también se reinicia
+            sesion.estado.map { estado -> (estado as? EstadoSesion.Autenticada)?.sesion?.let { it.usuario.id to it.perfilPrestadorId } }
                 .distinctUntilChanged()
                 .collect { _ui.value = MisServiciosUi() }
         }

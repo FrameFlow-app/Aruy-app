@@ -1,5 +1,16 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import ec.edu.puce.aruy.ui.components.TipoTarjeta
+import ec.edu.puce.aruy.ui.components.BotonRelleno
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,7 +71,11 @@ fun PerfilScreen(
     onReportes: () -> Unit,
     onNormas: () -> Unit,
     onBaja: () -> Unit,
-    onCerrarSesion: () -> Unit
+    onCerrarSesion: () -> Unit,
+    puedeOfrecer: Boolean = false,
+    onOfrecer: () -> Unit = {},
+    solicitudesNuevas: Int = 0,
+    onSolicitudes: () -> Unit = {}
 ) {
     var confirmarSalida by rememberSaveable { mutableStateOf(false) }
     val prestador = usuario.rol == RolUsuario.PRESTADOR
@@ -79,7 +94,22 @@ fun PerfilScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AruyAvatar(usuario.nombre, tamano = 96.dp)
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(onClickLabel = "Cambiar foto de perfil", onClick = onEditar)
+            ) {
+                AruyAvatar(usuario.nombre, tamano = 96.dp, fotoUrl = usuario.fotoPerfil)
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(30.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
             Text(usuario.nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
             EtiquetasPerfil(prestador, usuario)
         }
@@ -96,7 +126,22 @@ fun PerfilScreen(
             }
         }
 
+        if (puedeOfrecer) {
+            AruyTarjeta(tipo = TipoTarjeta.ACENTO, modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text("¿Quieres ofrecer tus servicios?", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Actívalo con esta misma cuenta: no necesitas crear otra ni usar otro correo.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                BotonRelleno("Quiero ofrecer servicios", onOfrecer, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+
         TituloGrupo("Cuenta")
+        FilaAjuste(
+            Icons.Filled.Inbox, "Mis solicitudes", onSolicitudes,
+            texto = if (solicitudesNuevas > 0) "$solicitudesNuevas sin ver" else "Lo que pediste y lo que te piden"
+        )
         FilaAjuste(Icons.Filled.Edit, "Editar perfil", onEditar, texto = if (prestador) "Nombre, celular, oficio y descripción" else "Nombre y celular")
         if (prestador) FilaAjuste(Icons.Filled.Star, "Aruy Pro", onPro, texto = "Suscripción simulada: sin cobro real")
         FilaAjuste(Icons.Filled.Settings, "Ajustes", onAjustes, texto = "Tema, tamaño de texto y animaciones")

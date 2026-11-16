@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import ec.edu.puce.aruy.domain.validation.ValidacionesSolicitud
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -219,5 +220,51 @@ private fun FilaOpcion(icono: androidx.compose.ui.graphics.vector.ImageVector, t
             Text(titulo, style = MaterialTheme.typography.titleMedium)
             Text(texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** "Pedir este servicio": el mensaje le llega al prestador dentro de Aruy y se le avisa. */
+@Composable
+fun HojaNuevaSolicitud(
+    nombre: String,
+    tituloServicio: String?,
+    enviando: Boolean,
+    onEnviar: (mensaje: String) -> Unit,
+    onCerrar: () -> Unit
+) {
+    var mensaje by rememberSaveable { mutableStateOf("") }
+    AruyHoja("Pedir este servicio", onCerrar) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AruyAvatar(nombre)
+            Column {
+                Text(nombre, style = MaterialTheme.typography.titleMedium)
+                if (!tituloServicio.isNullOrBlank()) {
+                    Text(tituloServicio, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Text(
+            "Tu solicitud le llega a $nombre dentro de Aruy y te avisamos cuando responda. Tu número solo se comparte si la acepta.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        AruyCampo(
+            valor = mensaje,
+            onValor = { mensaje = it },
+            etiqueta = "¿Qué necesitas?",
+            placeholder = "Ejemplo: necesito arreglar una tubería el sábado en la mañana.",
+            unaLinea = false,
+            lineasMin = 4,
+            maxCaracteres = ValidacionesSolicitud.MENSAJE_MAX
+        )
+        BotonRelleno(
+            texto = if (enviando) "Enviando…" else "Enviar solicitud",
+            onClick = { onEnviar(mensaje.trim()) },
+            grande = true,
+            ancho = true,
+            cargando = enviando,
+            habilitado = !enviando && ValidacionesSolicitud.mensaje(mensaje) == null
+        )
+        BotonTexto("Ahora no", onCerrar)
     }
 }

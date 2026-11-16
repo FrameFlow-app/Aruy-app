@@ -50,7 +50,10 @@ fun PanelScreen(
     nombre: String,
     onNuevoServicio: () -> Unit,
     onVerServicios: () -> Unit,
-    onEditar: (String) -> Unit
+    onEditar: (String) -> Unit,
+    solicitudesPorResponder: Int = 0,
+    solicitudesNuevas: Int = 0,
+    onSolicitudes: () -> Unit = {}
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -92,6 +95,22 @@ fun PanelScreen(
                             descripcion = if (ui.recibeSolicitudes) "Apareces como «Disponible ahora» en las búsquedas."
                             else "Los clientes verán que no estás disponible por ahora."
                         )
+                    }
+                }
+                item {
+                    AruyTarjeta(
+                        tipo = if (solicitudesPorResponder > 0 || solicitudesNuevas > 0) TipoTarjeta.ACENTO else TipoTarjeta.NORMAL,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Solicitudes", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            when {
+                                solicitudesPorResponder > 0 -> "Tienes $solicitudesPorResponder por responder."
+                                else -> "Aquí aparecen las personas que te piden un servicio."
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        BotonRelleno("Ver solicitudes", onSolicitudes, modifier = Modifier.padding(top = 8.dp))
                     }
                 }
                 item { CompletaTuPerfil(publicados = ui.servicios.size, fotos = ui.totalFotos) }

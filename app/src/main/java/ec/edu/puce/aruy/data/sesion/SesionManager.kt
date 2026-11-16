@@ -33,20 +33,25 @@ class SesionManager(
 
     /** Lee la sesión guardada. Si el token ya venció (el servidor lo emite por 30 días) se descarta. */
     suspend fun cargar() {
+        var fallo: String? = null
         val guardada = try {
             almacen.leer()
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (e: Exception) {
             RegistroSesion.aviso("Fallo al leer la sesion guardada (${e.javaClass.simpleName})")
+            fallo = "no se pudo leer el almacenamiento del teléfono (${e.javaClass.simpleName})"
             null
         }
         if (guardada == null) {
+            // Si había una sesión guardada y no se pudo recuperar, se dice por qué (si no, sería un cierre sin explicación)
+            (fallo ?: almacen.motivoDelUltimoFallo())?.let { _aviso.value = "No pudimos recuperar tu sesión: $it. Inicia sesión de nuevo." }
             _estado.value = EstadoSesion.SinSesion
         } else if (Jwt.estaVencido(guardada.token, ahoraMs())) {
             RegistroSesion.aviso("La sesion guardada ya vencio; se descarta")
             runCatching { almacen.borrar() }
-            _aviso.value = MENSAJE_VENCIDA
+            val cuando = Jwt.vencimientoLegible(guardada.token)
+            _aviso.value = if (cuando != null) "Tu sesión venció el $cuando. Inicia sesión de nuevo." else MENSAJE_VENCIDA
             _estado.value = EstadoSesion.SinSesion
         } else {
             token = guardada.token
@@ -85,7 +90,7 @@ class SesionManager(
         if (token == null) return
         RegistroSesion.aviso("El servidor rechazo el token (401): se cierra la sesion")
         token = null
-        _aviso.value = MENSAJE_VENCIDA
+        _aviso.value = MENSAJE_RECHAZADA
         _estado.value = EstadoSesion.SinSesion
         alcance.launch { runCatching { almacen.borrar() } }
     }
@@ -96,5 +101,6 @@ class SesionManager(
 
     companion object {
         const val MENSAJE_VENCIDA = "Tu sesión venció. Inicia sesión de nuevo."
+        const val MENSAJE_RECHAZADA = "El servidor ya no reconoce tu sesión (venció o tu cuenta cambió). Inicia sesión de nuevo."
     }
 }

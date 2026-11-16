@@ -17,6 +17,18 @@ object MensajesPerfil {
         return ApiErrorHandler.obtenerMensaje(error)
     }
 
+    /** `POST /usuarios/yo/foto` y quitar la foto. */
+    fun alCambiarFoto(error: Exception): String {
+        if (error is IllegalArgumentException) return error.message ?: "Elige otra foto."
+        if (error is HttpException) {
+            when (error.code()) {
+                400, 413, 415, 422 -> return ApiErrorHandler.mensajeDelServidor(error) ?: "Esa foto no se pudo usar. Prueba con otra."
+                502 -> return "No pudimos guardar tu foto ahora. Intenta de nuevo en un momento."
+            }
+        }
+        return ApiErrorHandler.obtenerMensaje(error)
+    }
+
     /** `POST /suscripciones` y `PATCH /suscripciones/{id}/cancelar`. */
     fun enSuscripciones(error: Exception): String {
         if (error is HttpException) {

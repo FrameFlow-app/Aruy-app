@@ -120,6 +120,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences) // Sesión (JWT) y preferencias
     implementation(libs.androidx.exifinterface) // Orientación de las fotos antes de convertirlas a WebP
     implementation(libs.coil.compose) // Carga de imágenes desde Supabase Storage
+    implementation(libs.androidx.work.runtime.ktx) // Avisos de solicitudes nuevas, aunque la app esté cerrada
     implementation(libs.mlkit.image.labeling) // Etiquetas de IA en el teléfono
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)

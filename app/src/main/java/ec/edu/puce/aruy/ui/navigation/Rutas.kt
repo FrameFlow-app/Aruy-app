@@ -42,6 +42,8 @@ object Rutas {
     const val PRIVACIDAD = "privacidad"
     const val BAJA = "baja"
     const val PRO = "aruy-pro"
+    const val OFRECER = "ofrecer-servicios"
+    const val SOLICITUDES = "solicitudes-aruy"
 
     /** Patrones con argumentos, tal como se registran en el NavHost. */
     const val PATRON_BUSCAR = "$BUSCAR?cat={cat}&foco={foco}"
@@ -111,6 +113,7 @@ fun rutaPermitida(ruta: String, rol: RolNavegacion): Boolean = when (ruta) {
     Rutas.GUARDADOS, Rutas.BLOQUEADOS -> rol == RolNavegacion.CONTRATANTE
     // Un invitado no ve el detalle: al tocar un servicio se le ofrece crear su cuenta
     Rutas.PERFIL, Rutas.SERVICIO, Rutas.PRESTADOR_PUBLICO, Rutas.REPORTES,
-    Rutas.EDITAR_PERFIL, Rutas.AJUSTES, Rutas.PERMISOS, Rutas.PRIVACIDAD, Rutas.BAJA -> rol != RolNavegacion.INVITADO
+    // OFRECER queda abierta a quien ya tiene cuenta: al activarse el perfil el rol cambia, y la pantalla no debe cerrarse de golpe
+    Rutas.EDITAR_PERFIL, Rutas.AJUSTES, Rutas.PERMISOS, Rutas.PRIVACIDAD, Rutas.BAJA, Rutas.OFRECER, Rutas.SOLICITUDES -> rol != RolNavegacion.INVITADO
     else -> true
 }

@@ -6,6 +6,7 @@ import ec.edu.puce.aruy.data.remote.api.CalificacionApi
 import ec.edu.puce.aruy.data.remote.api.PerfilApi
 import ec.edu.puce.aruy.data.remote.api.PrestadorApi
 import ec.edu.puce.aruy.data.remote.api.ServicioApi
+import ec.edu.puce.aruy.data.remote.api.SolicitudApi
 import ec.edu.puce.aruy.data.remote.api.SuscripcionApi
 import ec.edu.puce.aruy.data.remote.api.UsuarioApi
 import okhttp3.OkHttpClient
@@ -61,6 +62,8 @@ class RetrofitClient(
     val prestadorApi: PrestadorApi = retrofit.create(PrestadorApi::class.java)
 
     val suscripcionApi: SuscripcionApi = retrofit.create(SuscripcionApi::class.java)
+
+    val solicitudApi: SolicitudApi = retrofit.create(SolicitudApi::class.java)
 
     /**
      * Despierta el servidor (GET /health) mientras se ve la pantalla de inicio, para que ya esté listo

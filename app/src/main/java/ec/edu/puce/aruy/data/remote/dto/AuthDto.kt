@@ -24,7 +24,15 @@ data class RegistroRequest(
     @SerializedName("anios_experiencia") val aniosExperiencia: Int? = null
 )
 
-/** Respuesta de /auth/login y /auth/registro. */
+/** Cuerpo de `POST /perfiles/activar`: "Quiero ofrecer servicios" con la misma cuenta. */
+data class ActivarPerfilRequest(
+    @SerializedName("oficio_principal") val oficioPrincipal: String,
+    @SerializedName("zona_cobertura") val zonaCobertura: String,
+    @SerializedName("descripcion_profesional") val descripcionProfesional: String? = null,
+    @SerializedName("anios_experiencia") val aniosExperiencia: Int? = null
+)
+
+/** Respuesta de /auth/login, /auth/registro y /perfiles/activar. */
 data class AuthRespuestaDto(
     @SerializedName("token") val token: String,
     @SerializedName("usuario") val usuario: UsuarioDto,

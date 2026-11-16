@@ -1,5 +1,9 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material.icons.filled.Notifications
+import ec.edu.puce.aruy.ui.components.BotonContorno
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
@@ -66,7 +70,11 @@ fun InicioScreen(
     onCategoria: (CategoriaServicio) -> Unit,
     onVerTodos: (OrdenCatalogo?) -> Unit,
     onServicio: (String) -> Unit,
-    onCrearCuenta: () -> Unit
+    onCrearCuenta: () -> Unit,
+    puedeOfrecer: Boolean = false,
+    onOfrecer: () -> Unit = {},
+    solicitudesNuevas: Int = 0,
+    onSolicitudes: () -> Unit = {}
 ) {
     val estado by catalogo.catalogo.collectAsStateWithLifecycle()
     val vistosIds by actividad.vistosIds.collectAsStateWithLifecycle()
@@ -92,6 +100,16 @@ fun InicioScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                if (!invitado) {
+                    IconButton(onClick = onSolicitudes, modifier = Modifier.size(48.dp)) {
+                        BadgedBox(badge = { if (solicitudesNuevas > 0) Badge { Text("$solicitudesNuevas") } }) {
+                            Icon(
+                                Icons.Filled.Notifications,
+                                contentDescription = if (solicitudesNuevas > 0) "Mis solicitudes: $solicitudesNuevas sin ver" else "Mis solicitudes"
+                            )
+                        }
+                    }
+                }
                 IconButton(onClick = catalogo::recargar, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Filled.Refresh, contentDescription = "Actualizar")
                 }
@@ -107,6 +125,19 @@ fun InicioScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     BotonRelleno("Crear cuenta", onCrearCuenta, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
+        }
+
+        if (puedeOfrecer) {
+            item {
+                AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                    Text("¿Haces algún oficio?", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Ofrécelo en Aruy con tu misma cuenta y consigue clientes.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    BotonContorno("Ofrecer mis servicios", onOfrecer, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }

@@ -1,5 +1,15 @@
 package ec.edu.puce.aruy.ui.screen.auth
 
+import ec.edu.puce.aruy.ui.viewmodel.FotoElegida
+import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
+import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
+import ec.edu.puce.aruy.ui.components.BotonContorno
+import ec.edu.puce.aruy.ui.components.AruyAvatar
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.foundation.layout.size
+import coil.compose.AsyncImage
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -79,6 +89,10 @@ fun RegistroScreen(
     var correo by rememberSaveable { mutableStateOf("") }
     var celular by rememberSaveable { mutableStateOf("") }
     var fechaNacimiento by rememberSaveable { mutableStateOf("") }
+    var fotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var fotoDesdeCamara by rememberSaveable { mutableStateOf(false) }
+    var hojaFoto by rememberSaveable { mutableStateOf(false) }
+    val accionesFoto = rememberAccionesFoto { uri, desdeCamara -> fotoUri = uri; fotoDesdeCamara = desdeCamara }
     var password by rememberSaveable { mutableStateOf("") }
     var verPassword by rememberSaveable { mutableStateOf(false) }
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
@@ -120,9 +134,19 @@ fun RegistroScreen(
                     oficio = oficio?.etiqueta,
                     zona = zona,
                     fechaNacimiento = nacimiento.fecha
-                )
+                ),
+                fotoUri?.let { FotoElegida(it, fotoDesdeCamara) }
             ) {}
         }
+    }
+
+    if (hojaFoto) {
+        HojaAgregarFoto(
+            acciones = accionesFoto,
+            onCerrar = { hojaFoto = false },
+            titulo = "Foto de perfil",
+            texto = "Es opcional. Las personas verán esta foto en tu perfil; puedes cambiarla cuando quieras. Aruy la reduce y le quita la ubicación."
+        )
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -164,6 +188,26 @@ fun RegistroScreen(
                     BotonTexto("Iniciar sesión", onIniciarSesion)
                 }
             } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (fotoUri != null) {
+                        AsyncImage(
+                            model = fotoUri,
+                            contentDescription = "Tu foto de perfil",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(72.dp).clip(CircleShape)
+                        )
+                    } else {
+                        AruyAvatar(nombre.ifBlank { "Tú" }, tamano = 72.dp)
+                    }
+                    Column {
+                        BotonContorno(
+                            texto = if (fotoUri == null) "Agregar foto (opcional)" else "Cambiar foto",
+                            onClick = { hojaFoto = true },
+                            icono = Icons.Filled.PhotoCamera
+                        )
+                        if (fotoUri != null) BotonTexto("Quitar foto", { fotoUri = null })
+                    }
+                }
                 AruyCampo(
                     valor = nombre,
                     onValor = { nombre = it; errorNombre = null },

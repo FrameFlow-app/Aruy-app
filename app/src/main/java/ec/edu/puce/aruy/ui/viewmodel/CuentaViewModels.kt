@@ -1,5 +1,10 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import ec.edu.puce.aruy.util.ErrorFoto
+import ec.edu.puce.aruy.util.ConversorWebp
+import ec.edu.puce.aruy.domain.usecase.SubirFotoPerfilUseCase
+import ec.edu.puce.aruy.domain.usecase.QuitarFotoPerfilUseCase
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.ui.components.Aviso
@@ -34,6 +39,9 @@ import kotlinx.coroutines.launch
 // ---------------------------------------------------------------- Editar perfil
 
 data class EditarPerfilUi(
+    /** Dirección de la foto de perfil actual (null = se ven las iniciales). */
+    val fotoUrl: String? = null,
+    val subiendoFoto: Boolean = false,
     val cargando: Boolean = true,
     val esPrestador: Boolean = false,
     val email: String? = null,
@@ -54,7 +62,10 @@ data class EditarPerfilUi(
 
 class EditarPerfilViewModel(
     private val repositorio: PerfilRepository,
-    private val sesion: SesionManager
+    private val sesion: SesionManager,
+    private val subirFotoPerfil: SubirFotoPerfilUseCase,
+    private val quitarFotoPerfil: QuitarFotoPerfilUseCase,
+    private val conversor: ConversorWebp
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(EditarPerfilUi())
@@ -78,6 +89,7 @@ class EditarPerfilViewModel(
                     it.copy(
                         cargando = false,
                         esPrestador = prestador,
+                        fotoUrl = datos.usuario.fotoPerfil,
                         email = datos.email,
                         nombre = datos.usuario.nombre,
                         celular = datos.usuario.telefono,
@@ -93,6 +105,49 @@ class EditarPerfilViewModel(
             } catch (e: Exception) {
                 _ui.update { it.copy(cargando = false) }
                 _mensajes.tryEmit(Aviso.error(ApiErrorHandler.obtenerMensaje(e)))
+            }
+        }
+    }
+
+    /** Convierte la foto a WebP, la sube y deja la sesión con la foto nueva (se ve en todas las pantallas). */
+    fun cambiarFoto(uri: Uri, desdeCamara: Boolean) {
+        if (_ui.value.subiendoFoto) return
+        _ui.update { it.copy(subiendoFoto = true) }
+        viewModelScope.launch {
+            try {
+                val imagen = conversor.convertir(uri)
+                val usuario = subirFotoPerfil(imagen.webp)
+                sesion.actualizarUsuario(usuario)
+                _ui.update { it.copy(subiendoFoto = false, fotoUrl = usuario.fotoPerfil) }
+                _mensajes.tryEmit(Aviso.exito("Foto de perfil actualizada."))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ErrorFoto) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(Aviso.error(e.message.orEmpty()))
+            } catch (e: Exception) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alCambiarFoto(e)))
+            } finally {
+                if (desdeCamara) conversor.borrarTemporal(uri)
+            }
+        }
+    }
+
+    fun quitarFoto() {
+        if (_ui.value.subiendoFoto) return
+        _ui.update { it.copy(subiendoFoto = true) }
+        viewModelScope.launch {
+            try {
+                val usuario = quitarFotoPerfil()
+                sesion.actualizarUsuario(usuario)
+                _ui.update { it.copy(subiendoFoto = false, fotoUrl = null) }
+                _mensajes.tryEmit(Aviso.exito("Quitaste tu foto de perfil."))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update { it.copy(subiendoFoto = false) }
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alCambiarFoto(e)))
             }
         }
     }

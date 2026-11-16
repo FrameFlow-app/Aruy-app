@@ -3,10 +3,12 @@ package ec.edu.puce.aruy.data
 import com.google.gson.JsonParser
 import ec.edu.puce.aruy.data.remote.RetrofitClient
 import ec.edu.puce.aruy.data.repository.AuthRepositoryImpl
+import ec.edu.puce.aruy.domain.model.DatosPrestador
 import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.model.EstadoSesion
 import ec.edu.puce.aruy.domain.model.RolUsuario
+import ec.edu.puce.aruy.ui.viewmodel.ActivarPrestadorViewModel
 import ec.edu.puce.aruy.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -225,6 +227,39 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun activar_el_perfil_de_prestador_envia_los_datos_y_guarda_la_sesion_nueva() = runBlocking {
+        servidor.enqueue(MockResponse().setResponseCode(201).setBody(respuestaOk))
+
+        val sesion = repositorio.activarPerfilPrestador(DatosPrestador("Manicure", "Norte", aniosExperiencia = 3))
+
+        val peticion = servidor.takeRequest()
+        assertEquals("POST", peticion.method)
+        assertEquals("/perfiles/activar", peticion.path)
+        val cuerpo = JsonParser.parseString(peticion.body.readUtf8()).asJsonObject
+        assertEquals("Manicure", cuerpo.get("oficio_principal").asString)
+        assertEquals("Norte", cuerpo.get("zona_cobertura").asString)
+        assertEquals(3, cuerpo.get("anios_experiencia").asInt)
+        assertFalse(cuerpo.has("descripcion_profesional"))
+        // el token y el rol nuevos reemplazan a los anteriores
+        assertEquals("p1", sesion.perfilPrestadorId)
+        val guardada = (sesionManager.estado.value as EstadoSesion.Autenticada).sesion
+        assertEquals(token, guardada.token)
+        assertEquals(RolUsuario.PRESTADOR, guardada.usuario.rol)
+    }
+
+    @Test
+    fun si_ya_ofrece_servicios_el_mensaje_lo_explica() = runBlocking {
+        servidor.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":"Ya ofreces servicios con esta cuenta"}"""))
+        try {
+            repositorio.activarPerfilPrestador(DatosPrestador("Manicure", "Norte"))
+            fail("Debía fallar con 409")
+        } catch (e: HttpException) {
+            assertEquals("Ya ofreces servicios con esta cuenta.", ActivarPrestadorViewModel.mensajeDeActivar(e))
+        }
+        assertEquals(EstadoSesion.Cargando, sesionManager.estado.value)
+    }
+
+    @Test
     fun las_peticiones_con_sesion_llevan_el_token_bearer() = runBlocking {
         servidor.enqueue(MockResponse().setBody(respuestaOk))
         servidor.enqueue(MockResponse().setBody("[]"))
@@ -249,7 +284,7 @@ class AuthRepositoryTest {
         }
 
         assertEquals(EstadoSesion.SinSesion, sesionManager.estado.value)
-        assertEquals(SesionManager.MENSAJE_VENCIDA, sesionManager.aviso.value)
+        assertEquals(SesionManager.MENSAJE_RECHAZADA, sesionManager.aviso.value)
         assertNull(sesionManager.tokenActual())
     }
 }

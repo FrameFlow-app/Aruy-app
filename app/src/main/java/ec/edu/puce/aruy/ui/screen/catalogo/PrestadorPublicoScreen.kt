@@ -112,7 +112,7 @@ fun PrestadorPublicoScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AruyAvatar(nombre, tamano = 96.dp)
+                        AruyAvatar(nombre, tamano = 96.dp, fotoUrl = prestador?.fotoPerfil)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
                             prestador?.oficio?.takeIf { it.isNotBlank() }?.let {

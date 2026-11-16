@@ -1,5 +1,16 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
+import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
+import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
+import ec.edu.puce.aruy.ui.components.BotonTexto
+import ec.edu.puce.aruy.ui.components.BotonContorno
+import ec.edu.puce.aruy.ui.components.AruyAvatar
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +47,9 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
+    var hojaFoto by rememberSaveable { mutableStateOf(false) }
+    val acciones = rememberAccionesFoto { uri, desdeCamara -> viewModel.cambiarFoto(uri, desdeCamara) }
+
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
     LaunchedEffect(ui.finalizado) { if (ui.finalizado) onVolver() }
 
@@ -53,6 +67,24 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        AruyAvatar(ui.nombre.ifBlank { "Tú" }, tamano = 80.dp, fotoUrl = ui.fotoUrl)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            BotonContorno(
+                                texto = when {
+                                    ui.subiendoFoto -> "Subiendo…"
+                                    ui.fotoUrl == null -> "Agregar foto"
+                                    else -> "Cambiar foto"
+                                },
+                                onClick = { hojaFoto = true },
+                                icono = Icons.Filled.PhotoCamera,
+                                habilitado = !ui.subiendoFoto
+                            )
+                            if (ui.fotoUrl != null) {
+                                BotonTexto("Quitar foto", viewModel::quitarFoto, habilitado = !ui.subiendoFoto)
+                            }
+                        }
+                    }
                     AruyCampo(
                         valor = ui.nombre, onValor = viewModel::cambiarNombre, etiqueta = "Nombre completo",
                         error = ui.errorNombre, maxCaracteres = Validaciones.NOMBRE_MAX,
@@ -103,5 +135,14 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
             }
         }
         AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+
+    if (hojaFoto) {
+        HojaAgregarFoto(
+            acciones = acciones,
+            onCerrar = { hojaFoto = false },
+            titulo = "Foto de perfil",
+            texto = "Es la foto que verán las personas en tu perfil. Aruy la reduce y le quita la ubicación antes de subirla."
+        )
     }
 }

@@ -1,5 +1,8 @@
 package ec.edu.puce.aruy
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,8 +20,12 @@ import ec.edu.puce.aruy.ui.theme.ModoTema
 
 class MainActivity : ComponentActivity() {
 
+    /** La pantalla que pidió abrir una notificación (por ejemplo, Mis solicitudes). */
+    private var abrirRuta by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        abrirRuta = intent?.getStringExtra(EXTRA_ABRIR)
 
         enableEdgeToEdge()
 
@@ -48,8 +55,18 @@ class MainActivity : ComponentActivity() {
                 tamanoTexto = preferencias.tamanoTexto,
                 reducirAnimaciones = preferencias.reducirAnimaciones
             ) {
-                AruyApp(contenedor = contenedor)
+                AruyApp(contenedor = contenedor, abrirRuta = abrirRuta, alAbrirRuta = { abrirRuta = null })
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        abrirRuta = intent.getStringExtra(EXTRA_ABRIR)
+    }
+
+    companion object {
+        const val EXTRA_ABRIR = "abrir_ruta"
     }
 }
