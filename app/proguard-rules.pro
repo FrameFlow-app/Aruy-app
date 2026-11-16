@@ -1,21 +1,14 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Reglas de R8 para el release (minificado + reducción de recursos).
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Gson y Retrofit leen genéricos y anotaciones por reflexión: sin estos atributos fallan al deserializar.
+-keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod,RuntimeVisibleAnnotations
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# DTOs de la API (Gson con @SerializedName): los nombres de campo deben conservarse.
+-keep class ec.edu.puce.aruy.data.remote.dto.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Clases que Gson guarda/lee como JSON en DataStore (se serializan por nombre de campo, sin @SerializedName).
+-keep class ec.edu.puce.aruy.data.local.BorradorServicio { *; }
+-keep class ec.edu.puce.aruy.data.sesion.SesionStore$UsuarioGuardado { *; }
+
+# Enums de la app: Gson/valueOf los resuelven por nombre.
+-keepclassmembers enum ec.edu.puce.aruy.** { *; }
