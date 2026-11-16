@@ -1,7 +1,10 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
 import ec.edu.puce.aruy.domain.validation.ValidacionesSolicitud
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +41,8 @@ import ec.edu.puce.aruy.ui.components.AruyAvatar
 import ec.edu.puce.aruy.ui.components.AruyCampo
 import ec.edu.puce.aruy.ui.components.AruyHoja
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
-import ec.edu.puce.aruy.ui.components.BotonContorno
+import ec.edu.puce.aruy.ui.components.BotonTonal
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.BotonTexto
 import ec.edu.puce.aruy.ui.components.BotonWhatsApp
@@ -53,13 +57,20 @@ fun HojaContactar(
     disponible: Boolean,
     onAbrirWhatsApp: (mensaje: String) -> Unit,
     onCopiar: (mensaje: String) -> Unit,
-    onCerrar: () -> Unit
+    onCerrar: () -> Unit,
+    fotoUrl: String? = null
 ) {
     var mensaje by rememberSaveable { mutableStateOf(Contacto.mensajePorDefecto(nombre, tituloServicio)) }
     AruyHoja("Contactar a $nombre", onCerrar) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AruyAvatar(nombre)
-            if (!oficio.isNullOrBlank()) Text(oficio, style = MaterialTheme.typography.bodyLarge)
+        AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
+                AruyAvatar(nombre, tamano = 56.dp, fotoUrl = fotoUrl)
+                Column {
+                    Text(nombre, style = MaterialTheme.typography.titleMedium)
+                    if (!oficio.isNullOrBlank()) Text(oficio, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!tituloServicio.isNullOrBlank()) Text(tituloServicio, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
         if (!disponible) {
             AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
@@ -78,7 +89,7 @@ fun HojaContactar(
             maxCaracteres = 400
         )
         BotonWhatsApp("Abrir WhatsApp", { onAbrirWhatsApp(mensaje.trim()) }, icono = Icons.AutoMirrored.Filled.Chat, habilitado = mensaje.isNotBlank())
-        BotonContorno("Copiar mensaje", { onCopiar(mensaje.trim()) }, icono = Icons.Filled.ContentCopy, ancho = true, habilitado = mensaje.isNotBlank())
+        BotonTonal("Copiar mensaje", { onCopiar(mensaje.trim()) }, icono = Icons.Filled.ContentCopy, ancho = true, habilitado = mensaje.isNotBlank())
         BotonTexto("Ahora no", onCerrar)
     }
 }
@@ -101,23 +112,25 @@ fun HojaCalificar(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            (1..5).forEach { valor ->
-                IconButton(
-                    onClick = { estrellas = valor; error = null },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .semantics {
-                            role = Role.RadioButton
-                            contentDescription = "$valor ${if (valor == 1) "estrella" else "estrellas"}"
-                        }
-                ) {
-                    Icon(
-                        if (valor <= estrellas) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = null,
-                        tint = ec.edu.puce.aruy.ui.theme.AruyTheme.colores.estrella,
-                        modifier = Modifier.size(36.dp)
-                    )
+        AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacios.xs, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                (1..5).forEach { valor ->
+                    IconButton(
+                        onClick = { estrellas = valor; error = null },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .semantics {
+                                role = Role.RadioButton
+                                contentDescription = "$valor ${if (valor == 1) "estrella" else "estrellas"}"
+                            }
+                    ) {
+                        Icon(
+                            if (valor <= estrellas) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            contentDescription = null,
+                            tint = ec.edu.puce.aruy.ui.theme.AruyTheme.colores.estrella,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
             }
         }
@@ -164,12 +177,18 @@ fun HojaReportar(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(
+                        if (motivo == opcion) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainer
+                    )
                     .selectable(selected = motivo == opcion, role = Role.RadioButton) { motivo = opcion }
-                    .padding(vertical = 4.dp),
+                    .heightIn(min = 56.dp)
+                    .padding(horizontal = Espacios.l, vertical = Espacios.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = motivo == opcion, onClick = null)
-                Column(Modifier.padding(start = 12.dp)) {
+                Column(Modifier.padding(start = Espacios.m)) {
                     Text(opcion.titulo, style = MaterialTheme.typography.titleMedium)
                     opcion.descripcion?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -210,10 +229,13 @@ private fun FilaOpcion(icono: androidx.compose.ui.graphics.vector.ImageVector, t
     Row(
         Modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .selectable(selected = false, role = Role.Button, onClick = onClick)
-            .padding(vertical = 8.dp),
+            .heightIn(min = 64.dp)
+            .padding(horizontal = Espacios.l, vertical = Espacios.m),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(Espacios.l)
     ) {
         Icon(icono, contentDescription = null)
         Column {

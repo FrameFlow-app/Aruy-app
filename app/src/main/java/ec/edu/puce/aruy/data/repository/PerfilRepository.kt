@@ -41,18 +41,25 @@ class PerfilRepository(
             EditarUsuarioRequest(nombre = nombre.trim(), telefono = Validaciones.normalizarCelular(telefono))
         ).toDomain()
 
+    /** Sube la foto de perfil (ya en WebP); el servidor la reduce a 512 px y devuelve mi usuario con la URL. */
+    suspend fun subirMiFoto(webp: ByteArray): Usuario =
+        usuarioApi.subirMiFoto(webp.toRequestBody(PrestadorRepositoryImpl.TIPO_WEBP.toMediaType())).toDomain()
+
+    /** `{"foto_perfil": null}` borra la foto en el servidor. */
+    suspend fun quitarMiFoto(): Usuario =
+        usuarioApi.quitarMiFoto(
+            PrestadorRepositoryImpl.comoJson(JsonObject().apply { add("foto_perfil", JsonNull.INSTANCE) })
+        ).toDomain()
+
     suspend fun miPerfil(): PerfilPrestador = prestadorApi.miPerfil().toPerfil()
 
     suspend fun actualizarMiPerfil(datos: DatosPerfilPrestador): PerfilPrestador =
         prestadorApi.editarMiPerfil(PrestadorRepositoryImpl.comoJson(cuerpoDePerfil(datos))).toPerfil()
 
-    override suspend fun subirFoto(webp: ByteArray): Usuario =
-        usuarioApi.subirMiFoto(webp.toRequestBody("image/webp".toMediaType())).toDomain()
+    // Contrato del dominio (FotoPerfilRepository): usa la implementación de arriba
+    override suspend fun subirFoto(webp: ByteArray): Usuario = subirMiFoto(webp)
 
-    override suspend fun quitarFoto(): Usuario {
-        val cuerpo = JsonObject().apply { add("foto_perfil", JsonNull.INSTANCE) }
-        return usuarioApi.editarMiUsuarioJson(PrestadorRepositoryImpl.comoJson(cuerpo)).toDomain()
-    }
+    override suspend fun quitarFoto(): Usuario = quitarMiFoto()
 
     /** El servidor borra la cuenta y todos sus datos (servicios, fotos, opiniones y suscripción). */
     suspend fun eliminarCuenta() = usuarioApi.eliminarMiCuenta()

@@ -88,7 +88,7 @@ class AuthViewModel(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val motivo = if (e is ErrorFoto) e.message.orEmpty() else MensajesPerfil.alCambiarFoto(e)
+            val motivo = if (e is ErrorFoto) e.message.orEmpty() else MensajesPerfil.alSubirFoto(e)
             _mensajes.tryEmit(
                 Aviso.error("Tu cuenta se creó, pero la foto no se pudo subir. $motivo Puedes agregarla desde Editar perfil.")
             )

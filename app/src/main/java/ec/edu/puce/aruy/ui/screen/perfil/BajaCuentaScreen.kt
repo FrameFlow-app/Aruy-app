@@ -25,6 +25,7 @@ import ec.edu.puce.aruy.ui.components.BarraSuperior
 import ec.edu.puce.aruy.ui.components.BotonPeligro
 import ec.edu.puce.aruy.ui.components.BotonTexto
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.viewmodel.BajaCuentaViewModel
 
 /**
@@ -42,8 +43,8 @@ fun BajaCuentaScreen(viewModel: BajaCuentaViewModel, onVolver: () -> Unit) {
                 .weight(1f)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.l)
         ) {
             AruyTarjeta(tipo = TipoTarjeta.ERROR, modifier = Modifier.fillMaxWidth()) {
                 Text("Esto elimina tu cuenta para siempre", style = MaterialTheme.typography.titleMedium)
@@ -62,6 +63,7 @@ fun BajaCuentaScreen(viewModel: BajaCuentaViewModel, onVolver: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+            AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
             AruyCampo(
                 valor = ui.confirmacion,
                 onValor = viewModel::cambiarConfirmacion,
@@ -70,9 +72,11 @@ fun BajaCuentaScreen(viewModel: BajaCuentaViewModel, onVolver: () -> Unit) {
                 teclado = KeyboardOptions(imeAction = ImeAction.Done),
                 acciones = KeyboardActions(onDone = { viewModel.eliminarCuenta() })
             )
+            }
             BotonPeligro(
                 texto = if (ui.procesando) "Eliminando…" else "Eliminar mi cuenta",
                 onClick = viewModel::eliminarCuenta,
+                modifier = Modifier.padding(top = Espacios.s),
                 ancho = true,
                 cargando = ui.procesando
             )

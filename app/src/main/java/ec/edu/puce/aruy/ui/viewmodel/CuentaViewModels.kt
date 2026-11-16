@@ -1,13 +1,8 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
-import ec.edu.puce.aruy.util.ErrorFoto
-import ec.edu.puce.aruy.util.ConversorWebp
-import ec.edu.puce.aruy.domain.usecase.SubirFotoPerfilUseCase
-import ec.edu.puce.aruy.domain.usecase.QuitarFotoPerfilUseCase
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.local.PreferenciasStore
 import ec.edu.puce.aruy.data.local.PreferenciasUi
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
@@ -22,8 +17,11 @@ import ec.edu.puce.aruy.domain.model.Suscripcion
 import ec.edu.puce.aruy.domain.model.TipoPlan
 import ec.edu.puce.aruy.domain.validation.Validaciones
 import ec.edu.puce.aruy.domain.validation.ValidacionesPerfil
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.ui.theme.ModoTema
 import ec.edu.puce.aruy.ui.theme.TamanoTexto
+import ec.edu.puce.aruy.util.ConversorWebp
+import ec.edu.puce.aruy.util.ErrorFoto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,12 +37,11 @@ import kotlinx.coroutines.launch
 // ---------------------------------------------------------------- Editar perfil
 
 data class EditarPerfilUi(
-    /** Dirección de la foto de perfil actual (null = se ven las iniciales). */
-    val fotoUrl: String? = null,
-    val subiendoFoto: Boolean = false,
     val cargando: Boolean = true,
     val esPrestador: Boolean = false,
     val email: String? = null,
+    val fotoPerfil: String? = null,
+    val subiendoFoto: Boolean = false,
     val nombre: String = "",
     val celular: String = "",
     val oficio: String = "",
@@ -63,8 +60,6 @@ data class EditarPerfilUi(
 class EditarPerfilViewModel(
     private val repositorio: PerfilRepository,
     private val sesion: SesionManager,
-    private val subirFotoPerfil: SubirFotoPerfilUseCase,
-    private val quitarFotoPerfil: QuitarFotoPerfilUseCase,
     private val conversor: ConversorWebp
 ) : ViewModel() {
 
@@ -89,8 +84,8 @@ class EditarPerfilViewModel(
                     it.copy(
                         cargando = false,
                         esPrestador = prestador,
-                        fotoUrl = datos.usuario.fotoPerfil,
                         email = datos.email,
+                        fotoPerfil = datos.usuario.fotoPerfil,
                         nombre = datos.usuario.nombre,
                         celular = datos.usuario.telefono,
                         oficio = perfil?.oficioPrincipal.orEmpty(),
@@ -109,16 +104,26 @@ class EditarPerfilViewModel(
         }
     }
 
-    /** Convierte la foto a WebP, la sube y deja la sesión con la foto nueva (se ve en todas las pantallas). */
-    fun cambiarFoto(uri: Uri, desdeCamara: Boolean) {
-        if (_ui.value.subiendoFoto) return
+    fun cambiarNombre(v: String) = _ui.update { it.copy(nombre = v.take(Validaciones.NOMBRE_MAX), errorNombre = null) }
+    fun cambiarCelular(v: String) = _ui.update { it.copy(celular = v.take(20), errorCelular = null) }
+    fun cambiarOficio(v: String) = _ui.update { it.copy(oficio = v.take(ValidacionesPerfil.OFICIO_MAX), errorOficio = null) }
+    fun cambiarZona(v: String) = _ui.update { it.copy(zona = v.take(ValidacionesPerfil.ZONA_MAX), errorZona = null) }
+    fun cambiarDescripcion(v: String) = _ui.update { it.copy(descripcion = v.take(ValidacionesPerfil.DESCRIPCION_MAX)) }
+    fun cambiarAnios(v: String) = _ui.update { it.copy(anios = v.take(2), errorAnios = null) }
+
+    /** La foto se sube al elegirla, sin esperar a "Guardar cambios". No se valida con ML Kit: es una foto de perfil. */
+    fun elegirFoto(uri: Uri, desdeCamara: Boolean) {
+        if (_ui.value.subiendoFoto) {
+            if (desdeCamara) conversor.borrarTemporal(uri)
+            return
+        }
         _ui.update { it.copy(subiendoFoto = true) }
         viewModelScope.launch {
             try {
                 val imagen = conversor.convertir(uri)
-                val usuario = subirFotoPerfil(imagen.webp)
+                val usuario = repositorio.subirMiFoto(imagen.webp)
                 sesion.actualizarUsuario(usuario)
-                _ui.update { it.copy(subiendoFoto = false, fotoUrl = usuario.fotoPerfil) }
+                _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
                 _mensajes.tryEmit(Aviso.exito("Foto de perfil actualizada."))
             } catch (e: CancellationException) {
                 throw e
@@ -127,7 +132,7 @@ class EditarPerfilViewModel(
                 _mensajes.tryEmit(Aviso.error(e.message.orEmpty()))
             } catch (e: Exception) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alCambiarFoto(e)))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alSubirFoto(e)))
             } finally {
                 if (desdeCamara) conversor.borrarTemporal(uri)
             }
@@ -139,25 +144,18 @@ class EditarPerfilViewModel(
         _ui.update { it.copy(subiendoFoto = true) }
         viewModelScope.launch {
             try {
-                val usuario = quitarFotoPerfil()
+                val usuario = repositorio.quitarMiFoto()
                 sesion.actualizarUsuario(usuario)
-                _ui.update { it.copy(subiendoFoto = false, fotoUrl = null) }
+                _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
                 _mensajes.tryEmit(Aviso.exito("Quitaste tu foto de perfil."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alCambiarFoto(e)))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alSubirFoto(e)))
             }
         }
     }
-
-    fun cambiarNombre(v: String) = _ui.update { it.copy(nombre = v.take(Validaciones.NOMBRE_MAX), errorNombre = null) }
-    fun cambiarCelular(v: String) = _ui.update { it.copy(celular = v.take(20), errorCelular = null) }
-    fun cambiarOficio(v: String) = _ui.update { it.copy(oficio = v.take(ValidacionesPerfil.OFICIO_MAX), errorOficio = null) }
-    fun cambiarZona(v: String) = _ui.update { it.copy(zona = v.take(ValidacionesPerfil.ZONA_MAX), errorZona = null) }
-    fun cambiarDescripcion(v: String) = _ui.update { it.copy(descripcion = v.take(ValidacionesPerfil.DESCRIPCION_MAX)) }
-    fun cambiarAnios(v: String) = _ui.update { it.copy(anios = v.take(2), errorAnios = null) }
 
     fun guardar() {
         val u = _ui.value

@@ -42,6 +42,7 @@ import ec.edu.puce.aruy.ui.components.Pastilla
 import ec.edu.puce.aruy.ui.components.TipoPastilla
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
 import ec.edu.puce.aruy.ui.components.avisar
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.viewmodel.AruyProViewModel
 
 /** Aruy Pro: la suscripción simulada del backend (7 o 30 días, sin cobro real). */
@@ -66,8 +67,8 @@ fun AruyProScreen(viewModel: AruyProViewModel, onVolver: () -> Unit) {
                     Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(Espacios.l),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.l)
                 ) {
                     AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
                         Text("Suscripción simulada", style = MaterialTheme.typography.titleMedium)
@@ -81,20 +82,28 @@ fun AruyProScreen(viewModel: AruyProViewModel, onVolver: () -> Unit) {
 
                     if (PlanesPro.puedeContratar(ui.suscripcion)) {
                         Text("Elige un plan", style = MaterialTheme.typography.titleLarge)
-                        AruyInterruptor(
-                            titulo = "Renovación automática",
-                            activado = ui.renovacionAutomatica,
-                            onCambio = viewModel::cambiarRenovacion,
-                            descripcion = "Se guarda tu preferencia; por ahora no se renueva ni se cobra."
-                        )
+                        AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                            AruyInterruptor(
+                                titulo = "Renovación automática",
+                                activado = ui.renovacionAutomatica,
+                                onCambio = viewModel::cambiarRenovacion,
+                                descripcion = "Se guarda tu preferencia; por ahora no se renueva ni se cobra."
+                            )
+                        }
                         PlanesPro.PLANES.forEach { plan ->
-                            AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
-                                Text(plan.titulo, style = MaterialTheme.typography.titleMedium)
-                                Text("${plan.dias} días · ${plan.descripcion}", style = MaterialTheme.typography.bodyMedium)
+                            AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                                Text(plan.titulo, style = MaterialTheme.typography.titleLarge)
+                                Text(
+                                    "${plan.dias} días",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    modifier = Modifier.padding(top = Espacios.s)
+                                )
+                                Text(plan.descripcion, style = MaterialTheme.typography.bodyMedium)
                                 BotonRelleno(
                                     texto = "Elegir ${plan.titulo.removePrefix("Aruy Pro ")}",
                                     onClick = { viewModel.suscribirse(plan.tipo) },
-                                    modifier = Modifier.padding(top = 8.dp),
+                                    modifier = Modifier.padding(top = Espacios.l),
+                                    grande = true,
                                     ancho = true,
                                     cargando = ui.procesando
                                 )
@@ -123,7 +132,7 @@ fun AruyProScreen(viewModel: AruyProViewModel, onVolver: () -> Unit) {
 @Composable
 private fun Actual(suscripcion: Suscripcion, procesando: Boolean, onCancelar: () -> Unit) {
     val plan = PlanesPro.plan(suscripcion.tipoPlan)
-    AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(plan?.titulo ?: "Aruy Pro", style = MaterialTheme.typography.titleMedium)
             Pastilla(
@@ -143,7 +152,7 @@ private fun Actual(suscripcion: Suscripcion, procesando: Boolean, onCancelar: ()
             )
         }
         if (PlanesPro.puedeCancelar(suscripcion)) {
-            BotonContorno("Cancelar suscripción", onCancelar, modifier = Modifier.padding(top = 8.dp), habilitado = !procesando)
+            BotonContorno("Cancelar suscripción", onCancelar, modifier = Modifier.padding(top = Espacios.s), habilitado = !procesando)
         }
     }
 }

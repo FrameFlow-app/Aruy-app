@@ -13,6 +13,8 @@ import ec.edu.puce.aruy.ui.components.TipoTarjeta
 import ec.edu.puce.aruy.ui.components.BotonRelleno
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,7 +31,9 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ec.edu.puce.aruy.BuildConfig
 import ec.edu.puce.aruy.domain.model.EstadoVerificacion
@@ -53,7 +58,7 @@ import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.FilaAjuste
 import ec.edu.puce.aruy.ui.components.Pastilla
 import ec.edu.puce.aruy.ui.components.TipoPastilla
-import ec.edu.puce.aruy.ui.components.TituloGrupo
+import ec.edu.puce.aruy.ui.theme.Espacios
 
 /** Perfil de la persona con sesión: cuenta, privacidad y cierre de sesión (`perfil.js`). */
 @Composable
@@ -86,36 +91,46 @@ fun PerfilScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = Espacios.l, vertical = Espacios.s),
+        verticalArrangement = Arrangement.spacedBy(Espacios.l)
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .clickable(onClickLabel = "Cambiar foto de perfil", onClick = onEditar)
+        AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Espacios.s)
             ) {
-                AruyAvatar(usuario.nombre, tamano = 96.dp, fotoUrl = usuario.fotoPerfil)
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(30.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                // Tocar la foto lleva a Editar perfil, donde se cambia
+                Box(Modifier.clip(CircleShape).clickable(onClickLabel = "Cambiar foto de perfil", onClick = onEditar)) {
+                    AruyAvatar(usuario.nombre, tamano = 104.dp, fotoUrl = usuario.fotoPerfil)
                 }
+                Text(
+                    usuario.nombre,
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() }
+                )
+                EtiquetasPerfil(prestador, usuario)
             }
-            Text(usuario.nombre, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
-            EtiquetasPerfil(prestador, usuario)
+        }
+
+        // "Quiero ofrecer servicios": quien se registró como contratante puede empezar a ofrecer los suyos con la misma cuenta
+        if (puedeOfrecer) {
+            AruyTarjeta(modifier = Modifier.fillMaxWidth(), tipo = TipoTarjeta.ACENTO) {
+                Text("¿Quieres ofrecer tus servicios?", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Actívalo con esta misma cuenta: no necesitas crear otra ni usar otro correo.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                BotonRelleno("Quiero ofrecer servicios", onOfrecer, modifier = Modifier.padding(top = Espacios.s))
+            }
         }
 
         if (prestador) {
-            AruyTarjeta(modifier = Modifier.padding(horizontal = 16.dp)) {
+            AruyTarjeta(
+                modifier = Modifier.fillMaxWidth(),
+                tipo = if (recibeSolicitudes) TipoTarjeta.ACENTO else TipoTarjeta.NORMAL
+            ) {
                 AruyInterruptor(
                     titulo = if (recibeSolicitudes) "Recibiendo solicitudes" else "No recibes solicitudes",
                     activado = recibeSolicitudes,
@@ -126,36 +141,40 @@ fun PerfilScreen(
             }
         }
 
-        if (puedeOfrecer) {
-            AruyTarjeta(tipo = TipoTarjeta.ACENTO, modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text("¿Quieres ofrecer tus servicios?", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Actívalo con esta misma cuenta: no necesitas crear otra ni usar otro correo.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                BotonRelleno("Quiero ofrecer servicios", onOfrecer, modifier = Modifier.padding(top = 8.dp))
+        GrupoFilas("Cuenta") {
+            FilaAjuste(
+                Icons.Filled.Inbox, "Mis solicitudes", onSolicitudes,
+                texto = if (solicitudesNuevas > 0) "$solicitudesNuevas sin ver" else "Lo que pediste y lo que te piden"
+            )
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.Edit, "Editar perfil", onEditar, texto = if (prestador) "Nombre, celular, oficio y descripción" else "Nombre y celular")
+            if (prestador) {
+                SeparadorFilas()
+                FilaAjuste(Icons.Filled.Star, "Aruy Pro", onPro, texto = "Suscripción simulada: sin cobro real")
             }
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.Settings, "Ajustes", onAjustes, texto = "Tema, tamaño de texto y animaciones")
         }
 
-        TituloGrupo("Cuenta")
-        FilaAjuste(
-            Icons.Filled.Inbox, "Mis solicitudes", onSolicitudes,
-            texto = if (solicitudesNuevas > 0) "$solicitudesNuevas sin ver" else "Lo que pediste y lo que te piden"
-        )
-        FilaAjuste(Icons.Filled.Edit, "Editar perfil", onEditar, texto = if (prestador) "Nombre, celular, oficio y descripción" else "Nombre y celular")
-        if (prestador) FilaAjuste(Icons.Filled.Star, "Aruy Pro", onPro, texto = "Suscripción simulada: sin cobro real")
-        FilaAjuste(Icons.Filled.Settings, "Ajustes", onAjustes, texto = "Tema, tamaño de texto y animaciones")
+        GrupoFilas("Privacidad y seguridad") {
+            FilaAjuste(Icons.Filled.Lock, "Permisos", onPermisos, texto = "Cámara y galería")
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.PrivacyTip, "Mis datos y privacidad", onPrivacidad)
+            if (!prestador) {
+                SeparadorFilas()
+                FilaAjuste(Icons.Filled.Block, "Personas bloqueadas", onBloqueados)
+            }
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.Flag, "Mis reportes", onReportes)
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.Gavel, "Normas de la comunidad", onNormas)
+        }
 
-        TituloGrupo("Privacidad y seguridad")
-        FilaAjuste(Icons.Filled.Lock, "Permisos", onPermisos, texto = "Cámara y galería")
-        FilaAjuste(Icons.Filled.PrivacyTip, "Mis datos y privacidad", onPrivacidad)
-        if (!prestador) FilaAjuste(Icons.Filled.Block, "Personas bloqueadas", onBloqueados)
-        FilaAjuste(Icons.Filled.Flag, "Mis reportes", onReportes)
-        FilaAjuste(Icons.Filled.Gavel, "Normas de la comunidad", onNormas)
-
-        TituloGrupo("Sesión")
-        FilaAjuste(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión", { confirmarSalida = true })
-        FilaAjuste(Icons.Filled.DeleteForever, "Eliminar mi cuenta", onBaja, texto = "Borra tu cuenta y tus datos", peligro = true)
+        GrupoFilas("Sesión") {
+            FilaAjuste(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión", { confirmarSalida = true })
+            SeparadorFilas()
+            FilaAjuste(Icons.Filled.DeleteForever, "Eliminar mi cuenta", onBaja, texto = "Borra tu cuenta y tus datos", peligro = true)
+        }
 
         Text(
             "Aruy ${BuildConfig.VERSION_NAME}",
@@ -163,7 +182,7 @@ fun PerfilScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .padding(24.dp)
+                .padding(top = Espacios.s, bottom = Espacios.xxxl)
         )
     }
 
@@ -180,8 +199,40 @@ fun PerfilScreen(
 
 @Composable
 private fun EtiquetasPerfil(prestador: Boolean, usuario: Usuario) {
-    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s)) {
         Pastilla(if (prestador) "Prestador" else "Contratante", tipo = TipoPastilla.INFO)
         if (usuario.estadoVerificacion == EstadoVerificacion.VERIFICADA) Pastilla("Verificada", tipo = TipoPastilla.OK)
     }
+}
+
+/** Grupo de filas: título suave y una sola tarjeta redondeada con todas las filas dentro. */
+@Composable
+internal fun GrupoFilas(titulo: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
+        Text(
+            titulo,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(start = Espacios.l)
+                .semantics { heading() }
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 1.dp
+        ) {
+            Column(Modifier.padding(vertical = Espacios.xs), content = content)
+        }
+    }
+}
+
+/** Divisor con sangría para separar filas dentro de un grupo. */
+@Composable
+internal fun SeparadorFilas() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 56.dp, end = Espacios.l),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
 }

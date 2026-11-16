@@ -4,6 +4,7 @@ import com.google.gson.JsonParser
 import ec.edu.puce.aruy.data.remote.RetrofitClient
 import ec.edu.puce.aruy.data.remote.util.MensajesPerfil
 import ec.edu.puce.aruy.data.repository.PerfilRepository
+import ec.edu.puce.aruy.domain.repository.FotoPerfilRepository
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -50,7 +51,7 @@ class FotoPerfilTest {
         servidor.enqueue(MockResponse().setBody(conFoto))
         val imagen = ByteArray(300) { (it % 251).toByte() }
 
-        val usuario = perfiles.subirFoto(imagen)
+        val usuario = (perfiles as FotoPerfilRepository).subirFoto(imagen)
 
         val peticion = servidor.takeRequest()
         assertEquals("POST", peticion.method)
@@ -64,7 +65,7 @@ class FotoPerfilTest {
     fun quitar_la_foto_manda_foto_perfil_null_y_no_borra_el_campo() = runBlocking {
         servidor.enqueue(MockResponse().setBody(sinFoto))
 
-        val usuario = perfiles.quitarFoto()
+        val usuario = (perfiles as FotoPerfilRepository).quitarFoto()
 
         val peticion = servidor.takeRequest()
         assertEquals("PATCH", peticion.method)
@@ -80,18 +81,13 @@ class FotoPerfilTest {
 
     @Test
     fun los_errores_de_la_foto_se_explican_en_espanol() {
+        assertEquals("No pudimos leer esa imagen. Prueba con otra foto.", MensajesPerfil.alSubirFoto(httpError(400, "{}")))
+        assertEquals("La foto pesa demasiado. Elige una de menos de 5 MB.", MensajesPerfil.alSubirFoto(httpError(413, "{}")))
+        assertEquals("Ese formato no es válido. Usa una foto JPG, PNG o WebP.", MensajesPerfil.alSubirFoto(httpError(415, "{}")))
+        assertEquals("No pudimos reducir la foto. Prueba con otra más pequeña.", MensajesPerfil.alSubirFoto(httpError(422, "{}")))
         assertEquals(
-            "La imagen es demasiado grande. Usa una foto mas pequena",
-            MensajesPerfil.alCambiarFoto(httpError(400, """{"error":"La imagen es demasiado grande. Usa una foto mas pequena"}"""))
+            "El almacenamiento de fotos no está disponible ahora. Inténtalo en unos minutos.",
+            MensajesPerfil.alSubirFoto(httpError(502, "{}"))
         )
-        assertEquals(
-            "Esa foto no se pudo usar. Prueba con otra.",
-            MensajesPerfil.alCambiarFoto(httpError(415, "{}"))
-        )
-        assertEquals(
-            "No pudimos guardar tu foto ahora. Intenta de nuevo en un momento.",
-            MensajesPerfil.alCambiarFoto(httpError(502, "{}"))
-        )
-        assertEquals("La foto está vacía. Elige otra.", MensajesPerfil.alCambiarFoto(IllegalArgumentException("La foto está vacía. Elige otra.")))
     }
 }

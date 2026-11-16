@@ -17,13 +17,15 @@ object MensajesPerfil {
         return ApiErrorHandler.obtenerMensaje(error)
     }
 
-    /** `POST /usuarios/yo/foto` y quitar la foto. */
-    fun alCambiarFoto(error: Exception): String {
-        if (error is IllegalArgumentException) return error.message ?: "Elige otra foto."
+    /** `POST /usuarios/yo/foto` y quitar la foto con `PATCH /usuarios/yo`. */
+    fun alSubirFoto(error: Exception): String {
         if (error is HttpException) {
             when (error.code()) {
-                400, 413, 415, 422 -> return ApiErrorHandler.mensajeDelServidor(error) ?: "Esa foto no se pudo usar. Prueba con otra."
-                502 -> return "No pudimos guardar tu foto ahora. Intenta de nuevo en un momento."
+                400 -> return "No pudimos leer esa imagen. Prueba con otra foto."
+                413 -> return "La foto pesa demasiado. Elige una de menos de 5 MB."
+                415 -> return "Ese formato no es válido. Usa una foto JPG, PNG o WebP."
+                422 -> return "No pudimos reducir la foto. Prueba con otra más pequeña."
+                502, 503 -> return "El almacenamiento de fotos no está disponible ahora. Inténtalo en unos minutos."
             }
         }
         return ApiErrorHandler.obtenerMensaje(error)

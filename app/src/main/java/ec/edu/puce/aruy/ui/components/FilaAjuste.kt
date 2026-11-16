@@ -1,6 +1,10 @@
 package ec.edu.puce.aruy.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,12 +40,30 @@ fun FilaAjuste(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
+            .clip(MaterialTheme.shapes.large)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Icon(icono, contentDescription = null, tint = if (peligro) color else MaterialTheme.colorScheme.primary)
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(
+                    if (peligro) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.primaryContainer
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icono,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = if (peligro) MaterialTheme.colorScheme.onErrorContainer
+                else MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
         Column(Modifier.weight(1f)) {
             Text(titulo, style = MaterialTheme.typography.titleMedium, color = color)
             if (texto != null) {
@@ -57,10 +79,10 @@ fun FilaAjuste(
 fun TituloGrupo(texto: String, modifier: Modifier = Modifier) {
     Text(
         texto,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
             .semantics { heading() }
     )
 }

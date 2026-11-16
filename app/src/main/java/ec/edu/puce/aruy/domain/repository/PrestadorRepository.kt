@@ -36,6 +36,7 @@ interface PrestadorRepository {
     suspend fun eliminarFoto(fotoId: String)
 
     companion object {
-        const val MAX_FOTOS_POR_SERVICIO = 10
+        /** Fotos por servicio (el servidor también lo comprueba). */
+        const val MAX_FOTOS_POR_SERVICIO = 3
     }
 }

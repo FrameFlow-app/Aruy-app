@@ -24,13 +24,13 @@ interface UsuarioApi {
     @PATCH("usuarios/yo")
     suspend fun editarMiUsuario(@Body cuerpo: EditarUsuarioRequest): UsuarioDto
 
-    /** Lo mismo con un JSON que conserva los `null` (para quitar la foto: `{"foto_perfil": null}`). */
-    @PATCH("usuarios/yo")
-    suspend fun editarMiUsuarioJson(@Body cuerpo: RequestBody): UsuarioDto
-
-    /** Mi foto de perfil: el cuerpo es la imagen (WebP); el servidor responde con mi usuario ya actualizado. */
+    /** Foto de perfil: cuerpo crudo de la imagen (WebP); devuelve mi usuario con la URL pública. */
     @POST("usuarios/yo/foto")
     suspend fun subirMiFoto(@Body imagen: RequestBody): UsuarioDto
+
+    /** Quitar la foto: el cuerpo es `{"foto_perfil": null}` (se envía como JSON crudo para conservar el null). */
+    @PATCH("usuarios/yo")
+    suspend fun quitarMiFoto(@Body cuerpo: RequestBody): UsuarioDto
 
     /** Eliminar mi cuenta: el servidor borra la cuenta, el perfil, los servicios, las fotos y las opiniones. */
     @DELETE("usuarios/yo")

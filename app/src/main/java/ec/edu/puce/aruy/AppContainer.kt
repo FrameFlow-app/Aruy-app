@@ -138,9 +138,7 @@ class AppContainer(contexto: Context) {
         fabricaVm { MisServiciosViewModel(prestadorRepository, subirFotoCaso, sesionManager, conversorWebp, etiquetadorFotos) }
 
     val editarPerfilViewModelFactory: ViewModelProvider.Factory =
-        fabricaVm {
-            EditarPerfilViewModel(perfilRepository, sesionManager, subirFotoPerfilCaso, quitarFotoPerfilCaso, conversorWebp)
-        }
+        fabricaVm { EditarPerfilViewModel(perfilRepository, sesionManager, conversorWebp) }
     val bajaCuentaViewModelFactory: ViewModelProvider.Factory =
         fabricaVm {
             BajaCuentaViewModel(perfilRepository, sesionManager) { usuarioId ->

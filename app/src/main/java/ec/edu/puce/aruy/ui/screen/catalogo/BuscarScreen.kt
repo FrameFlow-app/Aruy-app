@@ -8,23 +8,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -39,13 +36,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.components.BarraBusqueda
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.catalogo.FiltrosCatalogo
 import ec.edu.puce.aruy.domain.catalogo.OrdenCatalogo
@@ -89,37 +87,25 @@ fun BuscarScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
+        BarraBusqueda(
+            modifier = Modifier.padding(horizontal = Espacios.l, vertical = Espacios.s),
+            placeholder = "Servicio, oficio o nombre",
             value = filtros.texto,
             onValueChange = { nuevo -> buscar.actualizar { it.copy(texto = nuevo) } },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .focusRequester(foco),
-            placeholder = { Text("Servicio, oficio o nombre") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            trailingIcon = {
-                if (filtros.texto.isNotEmpty()) {
-                    IconButton(onClick = { buscar.actualizar { it.copy(texto = "") } }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
-                    }
-                }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            shape = MaterialTheme.shapes.medium
+            onBuscar = { },
+            onFiltrar = { hoja = "filtros" },
+            filtrosActivos = filtros.cantidadActivos,
+            focusRequester = foco
         )
 
         FlowRow(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = Espacios.l),
+            horizontalArrangement = Arrangement.spacedBy(Espacios.s),
+            verticalArrangement = Arrangement.spacedBy(Espacios.s)
         ) {
-            AruyChip(
-                texto = if (filtros.cantidadActivos > 0) "Filtros (${filtros.cantidadActivos})" else "Filtros",
-                seleccionado = filtros.cantidadActivos > 0,
-                onClick = { hoja = "filtros" }
-            )
+            if (filtros.texto.isNotEmpty()) {
+                InputChipQuitar("Borrar búsqueda") { buscar.actualizar { it.copy(texto = "") } }
+            }
             AruyChip(texto = filtros.orden.etiqueta, seleccionado = false, onClick = { hoja = "orden" })
             filtros.categoria?.let { InputChipQuitar(it.etiqueta) { buscar.actualizar { f -> f.copy(categoria = null) } } }
             filtros.zona?.let { InputChipQuitar(it) { buscar.actualizar { f -> f.copy(zona = null) } } }
@@ -162,8 +148,8 @@ fun BuscarScreen(
                     )
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, bottom = Espacios.xxl),
+                        verticalArrangement = Arrangement.spacedBy(Espacios.m)
                     ) {
                         items(resultados, key = { it.id }) { item ->
                             FilaServicio(item, invitado, catalogo::portada, onClick = { onServicio(item.id) })
@@ -218,8 +204,16 @@ private fun InputChipQuitar(texto: String, onQuitar: () -> Unit) {
     InputChip(
         selected = true,
         onClick = onQuitar,
-        label = { Text(texto) },
-        trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Quitar filtro: $texto", modifier = Modifier.padding(0.dp)) }
+        label = { Text(texto, style = MaterialTheme.typography.labelLarge) },
+        modifier = Modifier.heightIn(min = 48.dp),
+        shape = FormaPildora,
+        colors = InputChipDefaults.inputChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        border = null,
+        trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Quitar filtro: $texto", modifier = Modifier.size(InputChipDefaults.IconSize)) }
     )
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -56,12 +57,12 @@ fun EstadoVacio(
     ) {
         Box(
             Modifier
-                .size(112.dp)
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .size(120.dp)
+                .clip(RoundedCornerShape(40.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icono, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(icono, null, Modifier.size(52.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
         }
         Text(titulo, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
         Text(
@@ -95,7 +96,7 @@ fun Esqueleto(modifier: Modifier = Modifier, alto: Dp = 16.dp) {
     Box(
         modifier
             .height(alto)
-            .clip(MaterialTheme.shapes.small)
+            .clip(MaterialTheme.shapes.medium)
             .background(color)
             .semantics { contentDescription = "Cargando" }
     )

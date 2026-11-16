@@ -131,14 +131,39 @@ private val EsquemaOscuro = darkColorScheme(
     scrim = Scrim
 )
 
-// Radios del prototipo: xs 4, s 8, m 12, l 16, xl 28
+// Radios del rediseño: esquinas muy redondeadas (xs 8, s 12, m 20, l 28, xl 32)
 private val FormasAruy = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(28.dp)
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
+
+/** Forma de píldora para botones, chips, campos de búsqueda y la barra flotante. */
+val FormaPildora = RoundedCornerShape(50)
+
+/** Escala de espaciado del rediseño. */
+object Espacios {
+    val xs = 4.dp
+    val s = 8.dp
+    val m = 12.dp
+    val l = 16.dp
+    val xl = 20.dp
+    val xxl = 24.dp
+    val xxxl = 32.dp
+}
+
+/** Superposiciones neutras (blanco/negro con alfa) para controles sobre fotos. */
+object Superposiciones {
+    val sobreFoto: Color = Color.White.copy(alpha = 0.88f)
+    val sobreFotoTinta: Color = Color(0xFF1B1B1F)
+    val velo: Color = Color.Black.copy(alpha = 0.45f)
+    val veloFuerte: Color = Color.Black.copy(alpha = 0.6f)
+    val veloLeve: Color = Color.Black.copy(alpha = 0.4f)
+    val tintaSobreVelo: Color = Color.White
+    val visor: Color = Color.Black
+}
 
 private val LocalColoresAruy = staticCompositionLocalOf { ColoresClaros }
 private val LocalReducirAnimaciones = staticCompositionLocalOf { false }

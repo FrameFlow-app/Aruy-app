@@ -30,6 +30,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
@@ -50,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -159,20 +163,22 @@ fun RegistroScreen(
                 .weight(1f)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Indicador(paso)
 
             if (paso == 1) {
                 Text("¿Cómo usarás Aruy?", style = MaterialTheme.typography.headlineMedium)
                 TarjetaRol(
+                    icono = Icons.Filled.Search,
                     titulo = "Quiero contratar servicios",
                     texto = "Busca por categoría y zona, mira trabajos reales y escribe por WhatsApp.",
                     seleccionada = rol == RolUsuario.CONTRATANTE,
                     onClick = { rol = RolUsuario.CONTRATANTE }
                 )
                 TarjetaRol(
+                    icono = Icons.Filled.Handyman,
                     titulo = "Quiero ofrecer mis servicios",
                     texto = "Publica lo que haces, sube fotos de tus trabajos y recibe clientes. Con la misma cuenta también puedes buscar y contratar.",
                     seleccionada = rol == RolUsuario.PRESTADOR,
@@ -328,7 +334,7 @@ fun RegistroScreen(
     }
 }
 
-/** "Paso N de 2": dos barras de 6 dp. */
+/** "Paso N de 2": dos segmentos en píldora de 8 dp. */
 @Composable
 private fun Indicador(paso: Int) {
     Row(
@@ -341,7 +347,7 @@ private fun Indicador(paso: Int) {
             Box(
                 Modifier
                     .weight(1f)
-                    .height(6.dp)
+                    .height(8.dp)
                     .clip(CircleShape)
                     .background(
                         if (indice < paso) MaterialTheme.colorScheme.primary
@@ -353,31 +359,40 @@ private fun Indicador(paso: Int) {
 }
 
 @Composable
-private fun TarjetaRol(titulo: String, texto: String, seleccionada: Boolean, onClick: () -> Unit) {
+private fun TarjetaRol(icono: ImageVector, titulo: String, texto: String, seleccionada: Boolean, onClick: () -> Unit) {
+    val esquema = MaterialTheme.colorScheme
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(selected = seleccionada, role = Role.RadioButton, onClick = onClick),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
-            containerColor = if (seleccionada) MaterialTheme.colorScheme.secondaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (seleccionada) esquema.primaryContainer else esquema.surfaceContainerLow
         ),
-        border = BorderStroke(
-            if (seleccionada) 2.dp else 1.5.dp,
-            if (seleccionada) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant
-        )
+        border = BorderStroke(2.dp, if (seleccionada) esquema.primary else Color.Transparent)
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            RadioButton(selected = seleccionada, onClick = null)
-            Column(Modifier.padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.Top) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(if (seleccionada) esquema.primary else esquema.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icono, null,
+                    tint = if (seleccionada) esquema.onPrimary else esquema.onSurfaceVariant
+                )
+            }
+            Column(Modifier.weight(1f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(titulo, style = MaterialTheme.typography.titleMedium)
                 Text(
                     texto,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (seleccionada) esquema.onPrimaryContainer else esquema.onSurfaceVariant
                 )
             }
+            RadioButton(selected = seleccionada, onClick = null)
         }
     }
 }

@@ -1,37 +1,56 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
-import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
-import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
-import ec.edu.puce.aruy.ui.components.BotonTexto
-import ec.edu.puce.aruy.ui.components.BotonContorno
-import ec.edu.puce.aruy.ui.components.AruyAvatar
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.layout.Row
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ec.edu.puce.aruy.ui.components.AvisoHost
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.Superposiciones
+import ec.edu.puce.aruy.ui.components.AruyTarjeta
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ec.edu.puce.aruy.ui.components.AvisoHost
+import ec.edu.puce.aruy.ui.components.AruyAvatar
+import ec.edu.puce.aruy.ui.components.BotonTexto
+import ec.edu.puce.aruy.ui.components.HojaFotoPerfil
+import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
 import ec.edu.puce.aruy.domain.validation.Validaciones
 import ec.edu.puce.aruy.domain.validation.ValidacionesPerfil
 import ec.edu.puce.aruy.ui.components.AruyCampo
@@ -46,9 +65,8 @@ import ec.edu.puce.aruy.ui.viewmodel.EditarPerfilViewModel
 fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-
     var hojaFoto by rememberSaveable { mutableStateOf(false) }
-    val acciones = rememberAccionesFoto { uri, desdeCamara -> viewModel.cambiarFoto(uri, desdeCamara) }
+    val acciones = rememberAccionesFoto(viewModel::elegirFoto)
 
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
     LaunchedEffect(ui.finalizado) { if (ui.finalizado) onVolver() }
@@ -64,27 +82,18 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                         .weight(1f)
                         .imePadding()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = Espacios.l, vertical = Espacios.s),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.l)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AruyAvatar(ui.nombre.ifBlank { "Tú" }, tamano = 80.dp, fotoUrl = ui.fotoUrl)
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            BotonContorno(
-                                texto = when {
-                                    ui.subiendoFoto -> "Subiendo…"
-                                    ui.fotoUrl == null -> "Agregar foto"
-                                    else -> "Cambiar foto"
-                                },
-                                onClick = { hojaFoto = true },
-                                icono = Icons.Filled.PhotoCamera,
-                                habilitado = !ui.subiendoFoto
-                            )
-                            if (ui.fotoUrl != null) {
-                                BotonTexto("Quitar foto", viewModel::quitarFoto, habilitado = !ui.subiendoFoto)
-                            }
-                        }
-                    }
+                    FotoDePerfil(
+                        nombre = ui.nombre,
+                        fotoUrl = ui.fotoPerfil,
+                        subiendo = ui.subiendoFoto,
+                        onCambiar = { hojaFoto = true },
+                        onQuitar = viewModel::quitarFoto
+                    )
+                    AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                      Column(verticalArrangement = Arrangement.spacedBy(Espacios.l)) {
                     AruyCampo(
                         valor = ui.nombre, onValor = viewModel::cambiarNombre, etiqueta = "Nombre completo",
                         error = ui.errorNombre, maxCaracteres = Validaciones.NOMBRE_MAX,
@@ -102,8 +111,12 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                             ayuda = "El correo no se puede cambiar desde la app.", habilitado = false
                         )
                     }
+                      }
+                    }
 
                     if (ui.esPrestador) {
+                      AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(Espacios.l)) {
                         AruyCampo(
                             valor = ui.oficio, onValor = viewModel::cambiarOficio, etiqueta = "Oficio principal",
                             placeholder = "Ejemplo: Plomero", error = ui.errorOficio,
@@ -125,24 +138,69 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                             error = ui.errorAnios,
                             teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
                         )
+                        }
+                      }
                     }
 
                     BotonRelleno(
                         texto = if (ui.guardando) "Guardando…" else "Guardar cambios",
                         onClick = viewModel::guardar, grande = true, ancho = true, cargando = ui.guardando
                     )
+                    Spacer(Modifier.height(Espacios.l))
                 }
             }
         }
         AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
+    if (hojaFoto) HojaFotoPerfil(acciones) { hojaFoto = false }
+}
 
-    if (hojaFoto) {
-        HojaAgregarFoto(
-            acciones = acciones,
-            onCerrar = { hojaFoto = false },
-            titulo = "Foto de perfil",
-            texto = "Es la foto que verán las personas en tu perfil. Aruy la reduce y le quita la ubicación antes de subirla."
+/**
+ * Avatar grande y tocable con una insignia de cámara. La foto se guarda al elegirla, aparte de
+ * "Guardar cambios", y la nota de abajo lo avisa.
+ */
+@Composable
+private fun FotoDePerfil(
+    nombre: String,
+    fotoUrl: String?,
+    subiendo: Boolean,
+    onCambiar: () -> Unit,
+    onQuitar: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .padding(top = Espacios.xs)
+                .clip(CircleShape)
+                .clickable(enabled = !subiendo, role = Role.Button, onClickLabel = "Cambiar foto de perfil", onClick = onCambiar)
+        ) {
+            AruyAvatar(nombre, tamano = 104.dp, fotoUrl = fotoUrl)
+            if (subiendo) {
+                Box(
+                    Modifier.size(104.dp).background(Superposiciones.velo, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(Modifier.size(32.dp), color = Superposiciones.tintaSobreVelo, strokeWidth = 3.dp)
+                }
+            }
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(36.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.PhotoCamera, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+            }
+        }
+        Spacer(Modifier.height(Espacios.s))
+        Text(
+            if (subiendo) "Subiendo tu foto…" else "La foto se guarda al elegirla, sin tocar «Guardar cambios».",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
+        if (!fotoUrl.isNullOrBlank()) BotonTexto("Quitar foto", onQuitar, habilitado = !subiendo)
     }
 }

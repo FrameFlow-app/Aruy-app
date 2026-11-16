@@ -38,7 +38,7 @@ API REST (Node.js + Express, en Render)
 - **Sesión que no se pierde:** el token dura 30 días y se **renueva solo** al abrir la app cuando le quedan menos de 20; si algún día se cierra la sesión, la app dice por qué y cuándo.
 - **"Quiero ofrecer servicios":** quien se registró como contratante puede pasar a prestador **con la misma cuenta** (tarjeta en el Inicio y en el Perfil), sin crear otra.
 - **Foto de perfil:** se elige al crear la cuenta (opcional) o desde *Editar perfil*; el servidor la deja en WebP de 512 px y le quita la ubicación.
-- **Prestador:** publicar, editar, pausar y borrar servicios; portafolio de fotos de sus trabajos; perfil (oficio, zona, años de experiencia); interruptor "Recibiendo solicitudes"; Aruy Pro (suscripción **simulada**, no se cobra nada).
+- **Prestador:** publicar, editar, pausar y borrar servicios (máximo 2 servicios por prestador); portafolio de hasta 3 fotos por servicio; perfil (oficio, zona, años de experiencia); interruptor "Recibiendo solicitudes"; Aruy Pro (suscripción **simulada**, no se cobra nada).
 - **Cuenta y privacidad:** sesión que se conserva al cerrar la app (token cifrado con Android Keystore), ajustes de tema y tamaño de texto, eliminar la cuenta (borra de verdad los datos y las fotos) y páginas de privacidad en `docs/`.
 
 ## IA en el teléfono (ML Kit)

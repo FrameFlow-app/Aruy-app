@@ -3,20 +3,25 @@ package ec.edu.puce.aruy.ui.screen.catalogo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,12 +41,15 @@ import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.EstadoVacio
 import ec.edu.puce.aruy.ui.components.tituloDeError
-import ec.edu.puce.aruy.ui.components.FilaServicio
+import ec.edu.puce.aruy.ui.components.TarjetaServicio
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
+import ec.edu.puce.aruy.ui.theme.Espacios
+import ec.edu.puce.aruy.ui.theme.FormaPildora
 import ec.edu.puce.aruy.ui.viewmodel.ActividadLocalViewModel
 import ec.edu.puce.aruy.ui.viewmodel.CatalogoViewModel
 
 /** Guardados: favoritos y prestadores contactados (`guardados.js`). Todo vive en el teléfono. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun GuardadosScreen(
     catalogo: CatalogoViewModel,
@@ -58,9 +66,29 @@ fun GuardadosScreen(
     LaunchedEffect(Unit) { catalogo.cargarSiHaceFalta() }
 
     Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = pestana) {
-            Tab(selected = pestana == 0, onClick = { pestana = 0 }, text = { Text("Favoritos") })
-            Tab(selected = pestana == 1, onClick = { pestana = 1 }, text = { Text("Contactados") })
+        SingleChoiceSegmentedButtonRow(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Espacios.l, vertical = Espacios.s)
+        ) {
+            listOf("Favoritos", "Contactados").forEachIndexed { i, texto ->
+                SegmentedButton(
+                    selected = pestana == i,
+                    onClick = { pestana = i },
+                    shape = SegmentedButtonDefaults.itemShape(i, 2, FormaPildora),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                        activeBorderColor = MaterialTheme.colorScheme.primary,
+                        inactiveBorderColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    icon = {},
+                    label = { Text(texto, style = MaterialTheme.typography.labelLarge) }
+                )
+            }
         }
         if (pestana == 0) {
             when (val e = estado) {
@@ -81,19 +109,22 @@ fun GuardadosScreen(
                         )
                     } else {
                         LazyColumn(
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, top = Espacios.s, bottom = Espacios.xxl),
+                            verticalArrangement = Arrangement.spacedBy(Espacios.m)
                         ) {
-                            items(items, key = { it.id }) { item ->
-                                FilaServicio(
-                                    item, invitado = false, cargarPortada = catalogo::portada,
-                                    onClick = { onServicio(item.id) },
-                                    accion = {
-                                        IconButton(onClick = { actividad.alternarFavorito(item.id, true) }) {
-                                            Icon(Icons.Filled.Favorite, contentDescription = "Quitar de favoritos: ${item.servicio.titulo}", tint = MaterialTheme.colorScheme.secondary)
-                                        }
+                            items(items.chunked(2), key = { par -> par.joinToString("-") { it.id } }) { par ->
+                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
+                                    par.forEach { item ->
+                                        TarjetaServicio(
+                                            item, invitado = false, cargarPortada = catalogo::portada,
+                                            onClick = { onServicio(item.id) },
+                                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                                            esFavorito = true,
+                                            onFavorito = { actividad.alternarFavorito(item.id, true) }
+                                        )
                                     }
-                                )
+                                    if (par.size == 1) Spacer(Modifier.weight(1f))
+                                }
                             }
                         }
                     }
@@ -108,8 +139,8 @@ fun GuardadosScreen(
                 )
             } else {
                 LazyColumn(
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, top = Espacios.s, bottom = Espacios.xxl),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.m)
                 ) {
                     item {
                         Text(
@@ -119,7 +150,7 @@ fun GuardadosScreen(
                         )
                     }
                     items(contactos, key = { it.id }) { contacto ->
-                        AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                        AruyTarjeta(tipo = TipoTarjeta.NORMAL, modifier = Modifier.fillMaxWidth()) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(contacto.nombre, style = MaterialTheme.typography.titleMedium)
                                 Text(TiempoRelativo.texto(contacto.fecha), style = MaterialTheme.typography.bodyMedium)

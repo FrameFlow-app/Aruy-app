@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.components
 
+import ec.edu.puce.aruy.ui.theme.Superposiciones
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -41,10 +42,10 @@ fun BotonQuitarFoto(onClick: () -> Unit, modifier: Modifier = Modifier, habilita
         Box(
             Modifier
                 .size(28.dp)
-                .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                .background(Superposiciones.veloFuerte, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Close, contentDescription = "Quitar foto", tint = Color.White, modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.Close, contentDescription = "Quitar foto", tint = Superposiciones.tintaSobreVelo, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -87,6 +88,21 @@ fun rememberAccionesFoto(alElegir: (uri: Uri, desdeCamara: Boolean) -> Unit): Ac
                 galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             }
         )
+    }
+}
+
+/** "Foto de perfil": tomar una foto o elegirla de la galería (sin el aviso de ML Kit, que es solo para servicios). */
+@Composable
+fun HojaFotoPerfil(acciones: AccionesFoto, onCerrar: () -> Unit) {
+    AruyHoja("Foto de perfil", onCerrar) {
+        Text(
+            "Tu foto se guarda al elegirla y la ven quienes visitan tu perfil.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        BotonRelleno("Tomar foto", { onCerrar(); acciones.tomar() }, icono = Icons.Filled.PhotoCamera, grande = true, ancho = true)
+        BotonContorno("Elegir de la galería", { onCerrar(); acciones.elegir() }, icono = Icons.Filled.PhotoLibrary, grande = true, ancho = true)
+        BotonTexto("Ahora no", onCerrar)
     }
 }
 

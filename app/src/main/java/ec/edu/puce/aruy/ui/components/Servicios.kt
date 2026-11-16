@@ -19,7 +19,9 @@ import androidx.compose.material.icons.filled.FormatPaint
 import androidx.compose.material.icons.filled.MiscellaneousServices
 import androidx.compose.material.icons.filled.Plumbing
 import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,11 +39,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
+import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.domain.model.ServicioConPrestador
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import java.text.DecimalFormat
@@ -74,14 +79,15 @@ fun PortadaServicio(
     servicioId: String,
     categoria: CategoriaServicio,
     cargarPortada: suspend (String) -> String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    forma: Shape = MaterialTheme.shapes.medium
 ) {
     var url by remember(servicioId) { mutableStateOf<String?>(null) }
     LaunchedEffect(servicioId) { url = cargarPortada(servicioId) }
     Box(
         // Primero se recorta y después se pinta el fondo: al revés, el fondo asoma por las esquinas
         modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
+            .clip(forma)
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center
     ) {
@@ -115,37 +121,66 @@ private fun DatosOcultos(modifier: Modifier = Modifier) {
     }
 }
 
-/** Tarjeta del carrusel de Inicio. */
+/**
+ * Tarjeta grande del carrusel de Inicio: foto con esquinas muy redondeadas, título a ancho completo,
+ * prestador, y calificación con precio. El corazón flotante solo aparece si hay [onFavorito].
+ */
 @Composable
 fun TarjetaServicio(
     item: ServicioConPrestador,
     invitado: Boolean,
     cargarPortada: suspend (String) -> String?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    esFavorito: Boolean = false,
+    onFavorito: (() -> Unit)? = null
 ) {
-    Card(
+    ElevatedCard(
         onClick = onClick,
-        modifier = modifier.width(220.dp),
+        modifier = modifier.width(240.dp),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
-        PortadaServicio(
-            item.id, item.servicio.categoria, cargarPortada,
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(4f / 3f)
-        )
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                item.servicio.titulo,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+        Box(Modifier.padding(Espacios.s)) {
+            PortadaServicio(
+                item.id, item.servicio.categoria, cargarPortada,
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 3f),
+                forma = MaterialTheme.shapes.large
             )
+            if (onFavorito != null) {
+                BotonCircular(
+                    icono = if (esFavorito) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    descripcion = if (esFavorito) "Quitar de guardados" else "Guardar servicio",
+                    onClick = onFavorito,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Espacios.s),
+                    variante = VarianteCircular.SOBRE_FOTO,
+                    seleccionado = esFavorito
+                )
+            }
+        }
+        Column(
+            Modifier.padding(start = Espacios.l, end = Espacios.l, top = Espacios.xs, bottom = Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.xs)
+        ) {
             if (invitado) {
+                Text(
+                    item.servicio.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 DatosOcultos()
             } else {
+                Text(
+                    item.servicio.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Text(
                     item.nombrePrestador,
                     style = MaterialTheme.typography.bodyMedium,
@@ -153,8 +188,17 @@ fun TarjetaServicio(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                // Precio y calificación en líneas propias (sin FlowRow: sus medidas intrínsecas fallan
+                // dentro de Row + IntrinsicSize.Max y recortaban el precio)
+                Text(
+                    textoPrecio(item.servicio.precioReferencial),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Calificacion(item.prestador?.promedio, item.prestador?.totalCalificaciones ?: 0)
-                Text(textoPrecio(item.servicio.precioReferencial), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -170,18 +214,22 @@ fun FilaServicio(
     modifier: Modifier = Modifier,
     accion: (@Composable () -> Unit)? = null
 ) {
-    Card(
+    ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(Espacios.m),
+            horizontalArrangement = Arrangement.spacedBy(Espacios.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PortadaServicio(item.id, item.servicio.categoria, cargarPortada, Modifier.size(80.dp))
+            PortadaServicio(
+                item.id, item.servicio.categoria, cargarPortada, Modifier.size(88.dp),
+                forma = MaterialTheme.shapes.medium
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     item.servicio.titulo,
