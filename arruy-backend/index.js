@@ -3,6 +3,7 @@ const app = require('./app');
 const pool = require('./db');
 const { registrarError } = require('./registro');
 const { mantenerActivo } = require('./almacenamiento');
+const { asegurarEsquema } = require('./esquema');
 
 // Un error que nadie atrapo no debe pasar en silencio.
 process.on('unhandledRejection', (motivo) => {
@@ -22,6 +23,11 @@ const servidor = app.listen(PORT, () => console.log(`Servidor en http://localhos
 // y eso produce errores 502 intermitentes. Se mantienen abiertas mas tiempo que las del proxy.
 servidor.keepAliveTimeout = 65 * 1000;
 servidor.headersTimeout = 66 * 1000;
+
+// Prepara lo que falte en la base (columna de fecha de nacimiento, tabla de solicitudes). No borra nada y no frena el arranque.
+asegurarEsquema(pool)
+  .then((r) => console.log(`Base de datos: ${r.filter((x) => x.ok).length}/${r.length} preparaciones listas`))
+  .catch(registrarError);
 
 // Evita que Supabase gratis pause el proyecto de las fotos por falta de actividad (ver almacenamiento.js)
 const avisarSupabase = () =>

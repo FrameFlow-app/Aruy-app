@@ -90,7 +90,18 @@ app.get('/health', (req, res) => res.json({ estado: 'ok' }));
 app.post('/auth/login', limiteLoginCuenta, limiteAuthPorIp);
 app.post('/auth/registro', limiteRegistro, limiteAuthPorIp);
 app.use('/auth', require('./routes/auth'));
+// Enviar solicitudes: no mas de 30 por hora por persona (evita llenar de mensajes a un prestador)
+const limiteSolicitudes = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  limit: 30,
+  keyGenerator: (req) => quien(req),
+  message: { error: 'Enviaste muchas solicitudes seguidas. Intenta de nuevo en un rato.' },
+});
+
 app.post('/servicios/:id/fotos', limiteImagenes);
+app.post('/solicitudes', limiteSolicitudes);
 app.post('/usuarios/yo/foto', limiteImagenes);
 app.use('/servicios', require('./routes/servicios'));
 app.use('/usuarios', require('./routes/usuarios'));
@@ -98,6 +109,7 @@ app.use('/perfiles', require('./routes/perfiles'));
 app.use('/fotos', require('./routes/fotos'));
 app.use('/calificaciones', require('./routes/calificaciones'));
 app.use('/suscripciones', require('./routes/suscripciones'));
+app.use('/solicitudes', require('./routes/solicitudes'));
 
 // Documentación interactiva (Swagger) en /docs
 try {

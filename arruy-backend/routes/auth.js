@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { registrarError } = require('../registro');
-const { firmarToken } = require('../middleware/auth');
+const { firmarToken, exigirToken } = require('../middleware/auth');
 const { edadEnAnios, EDAD_MINIMA, textoValido, esEmail, passwordValida, ROLES } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
 
@@ -20,7 +20,7 @@ const aUsuario = (u) => ({ ...u, id: String(u.id), telefono: u.telefono ?? '', f
 // valida igual y simplemente no se guarda. Se consulta una sola vez.
 let hayColumnaFecha;
 async function guardaFechaNacimiento(client) {
-  if (hayColumnaFecha === undefined) {
+  if (hayColumnaFecha !== true) {
     try {
       const r = await client.query(
         "SELECT 1 FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'fecha_nacimiento'"
@@ -163,6 +163,25 @@ router.post('/login', async (req, res) => {
   } catch (e) {
     registrarError(e);
     res.status(500).json({ error: 'Error al iniciar sesion' });
+  }
+});
+
+// Renovar la sesion: con un token vigente se entrega uno nuevo de 30 dias. La app lo pide al abrirse cuando al token
+// le quedan pocos dias, y asi quien usa Aruy seguido nunca tiene que volver a escribir su contrasena.
+router.post('/renovar', exigirToken, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT ${COLUMNAS_PUBLICAS} FROM usuarios WHERE id = $1`, [req.usuario.id]);
+    const u = r.rows[0];
+    if (!u || u.activo === false) return res.status(401).json({ error: 'Esta cuenta ya no existe' });
+    const p = await pool.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1', [u.id]);
+    res.json({
+      token: firmarToken(u),
+      usuario: aUsuario(u),
+      perfil_prestador_id: p.rows[0] ? String(p.rows[0].id) : null,
+    });
+  } catch (e) {
+    registrarError(e);
+    res.status(500).json({ error: 'Error al renovar la sesion' });
   }
 });
 
