@@ -32,7 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.theme.Espacios
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.model.EstadoSolicitud
@@ -78,7 +78,7 @@ fun SolicitudesScreen(
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
     val contexto = LocalContext.current
-    val pedirNotificaciones = rememberPedirNotificaciones()
+    val pedirNotificaciones = rememberPedirNotificaciones(snackbar)
     var cambio by remember { mutableStateOf<CambioPendiente?>(null) }
 
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
@@ -134,8 +134,8 @@ fun SolicitudesScreen(
                     onBoton = viewModel::cargar
                 )
                 else -> LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(Espacios.l),
+                    verticalArrangement = Arrangement.spacedBy(Espacios.m)
                 ) {
                     items(ui.items, key = { it.id }) { solicitud ->
                         TarjetaSolicitud(
@@ -199,7 +199,7 @@ private fun TarjetaSolicitud(
 ) {
     val acciones = solicitud.accionesPara(tipo)
     AruyTarjeta(modifier = Modifier.fillMaxWidth(), onClick = if (solicitud.servicioId != null) onAbrirServicio else null) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
             AruyAvatar(solicitud.contraparte.nombre, fotoUrl = solicitud.contraparte.fotoPerfil)
             Column(Modifier.weight(1f)) {
                 Text(solicitud.contraparte.nombre, style = MaterialTheme.typography.titleMedium)
@@ -209,35 +209,35 @@ private fun TarjetaSolicitud(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Espacios.xs)) {
                 Pastilla(solicitud.estado.etiqueta, tipo = tipoDePastilla(solicitud.estado))
                 if (solicitud.sinVer) Pastilla("Nuevo", tipo = TipoPastilla.ROSA)
             }
         }
-        Text(solicitud.mensaje, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
+        Text(solicitud.mensaje, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Espacios.s))
         solicitud.respuesta?.let {
             Text(
                 "Respuesta: $it",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = Espacios.xs)
             )
         }
         Text(
             TiempoRelativo.desde(solicitud.fechaCreacion),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = Espacios.xs)
         )
 
         if (solicitud.estado == EstadoSolicitud.ACEPTADA && solicitud.contraparte.telefono != null) {
             BotonContorno(
                 "Escribir por WhatsApp", onEscribir,
-                icono = Icons.AutoMirrored.Filled.Chat, ancho = true, modifier = Modifier.padding(top = 8.dp)
+                icono = Icons.AutoMirrored.Filled.Chat, ancho = true, modifier = Modifier.padding(top = Espacios.s)
             )
         }
         if (acciones.isNotEmpty()) {
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.padding(top = Espacios.s), horizontalArrangement = Arrangement.spacedBy(Espacios.s)) {
                 acciones.forEach { accion ->
                     val principal = accion == EstadoSolicitud.ACEPTADA || accion == EstadoSolicitud.COMPLETADA
                     val modificador = Modifier.weight(1f)

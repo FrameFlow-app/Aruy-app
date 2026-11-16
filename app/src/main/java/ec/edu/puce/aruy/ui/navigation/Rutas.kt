@@ -68,7 +68,7 @@ object Rutas {
     val ENTRADA = setOf(BIENVENIDA, LOGIN, REGISTRO)
 
     /** Rutas que se ven con la barra inferior. */
-    val CON_BARRA = setOf(INICIO, BUSCAR, GUARDADOS, PERFIL, PANEL, MIS_SERVICIOS, PORTAFOLIO)
+    val CON_BARRA = setOf(INICIO, BUSCAR, GUARDADOS, PERFIL, PANEL, MIS_SERVICIOS, PORTAFOLIO, SOLICITUDES, OFRECER)
 }
 
 /** Quién está usando la app: define qué pestañas se ven y a qué pantallas puede entrar. */

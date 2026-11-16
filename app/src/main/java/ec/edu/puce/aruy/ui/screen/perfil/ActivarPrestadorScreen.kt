@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.theme.Espacios
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.DatosPrestador
@@ -84,8 +85,8 @@ fun ActivarPrestadorScreen(
                     .weight(1f)
                     .imePadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = Espacios.l, vertical = Espacios.s),
+                verticalArrangement = Arrangement.spacedBy(Espacios.l)
             ) {
                 Text(
                     "Con esta misma cuenta",
@@ -99,7 +100,7 @@ fun ActivarPrestadorScreen(
                 )
 
                 Text("¿Qué servicio ofreces?", style = MaterialTheme.typography.titleMedium)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
                     CategoriaServicio.entries.forEach { categoria ->
                         AruyChip(
                             categoria.etiqueta,
@@ -111,7 +112,7 @@ fun ActivarPrestadorScreen(
                 errorOficio?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error) }
 
                 Text("Tu zona en Quito", style = MaterialTheme.typography.titleMedium)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
                     ZONAS.forEach { opcion ->
                         AruyChip(opcion, seleccionado = zona == opcion, onClick = { zona = opcion })
                     }

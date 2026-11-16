@@ -7,6 +7,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import ec.edu.puce.aruy.ui.components.Pastilla
+import ec.edu.puce.aruy.ui.components.TipoPastilla
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -133,12 +143,23 @@ fun AjustesScreen(viewModel: AjustesViewModel, onVolver: () -> Unit) {
 }
 
 /**
- * Permisos. Aruy no pide ninguno: la cámara se abre con la app de cámara del teléfono y las fotos se
- * eligen con el selector del sistema. Esta pantalla lo explica y lleva a los ajustes del teléfono.
+ * Permisos. Aruy solo usa el de notificaciones (opcional): la cámara se abre con la app de cámara del teléfono y
+ * las fotos se eligen con el selector del sistema. Esta pantalla lo explica y lleva a los ajustes del teléfono.
  */
 @Composable
 fun PermisosScreen(onVolver: () -> Unit) {
     val contexto = LocalContext.current
+    var notificacionesActivas by remember { mutableStateOf(NotificationManagerCompat.from(contexto).areNotificationsEnabled()) }
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(ciclo) {
+        val observador = LifecycleEventObserver { _, evento ->
+            if (evento == Lifecycle.Event.ON_RESUME) {
+                notificacionesActivas = NotificationManagerCompat.from(contexto).areNotificationsEnabled()
+            }
+        }
+        ciclo.addObserver(observador)
+        onDispose { ciclo.removeObserver(observador) }
+    }
     Column(Modifier.fillMaxSize()) {
         BarraSuperior("Permisos", onVolver)
         Column(
@@ -147,7 +168,36 @@ fun PermisosScreen(onVolver: () -> Unit) {
                 .padding(Espacios.l),
             verticalArrangement = Arrangement.spacedBy(Espacios.m)
         ) {
-            Text("Aruy no necesita permisos especiales.", style = MaterialTheme.typography.bodyLarge)
+            Text("Aruy solo usa el permiso de notificaciones, y es opcional.", style = MaterialTheme.typography.bodyLarge)
+            AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Notificaciones", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Pastilla(
+                        if (notificacionesActivas) "Activadas" else "Desactivadas",
+                        tipo = if (notificacionesActivas) TipoPastilla.OK else TipoPastilla.NEUTRA
+                    )
+                }
+                Text(
+                    "Sirven para avisarte cuando llega una solicitud o responden la tuya. Son opcionales: sin ellas, Aruy funciona igual y ves todo dentro de la app.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = Espacios.xs)
+                )
+                BotonContorno(
+                    "Abrir ajustes de notificaciones",
+                    onClick = {
+                        val intento = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, contexto.packageName)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        runCatching { contexto.startActivity(intento) }
+                    },
+                    modifier = Modifier.padding(top = Espacios.m),
+                    ancho = true
+                )
+            }
             TarjetaPermiso("Cámara", "Para la foto de un trabajo se abre la app de cámara de tu teléfono. Aruy no tiene acceso a la cámara por su cuenta.")
             TarjetaPermiso("Galería", "Eliges las fotos con el selector del sistema: Aruy solo ve las que tú escoges, no toda tu galería.")
             TarjetaPermiso("Ubicación", "Aruy no usa tu ubicación.")
@@ -203,6 +253,7 @@ fun PrivacidadScreen(onVolver: () -> Unit, onPermisos: () -> Unit, onBaja: () ->
                     "sin la ubicación ni los datos de la cámara. El análisis de etiquetas ocurre en tu teléfono, sin internet."
             )
             Dato("Tu ubicación", "Aruy no la usa ni la guarda.")
+            Dato("Notificaciones", "Son opcionales: solo sirven para avisarte de solicitudes. Puedes activarlas o desactivarlas cuando quieras en Permisos.")
             BotonContorno("Revisar permisos", onPermisos, ancho = true)
             BotonPeligro("Eliminar mi cuenta", onBaja, modifier = Modifier.fillMaxWidth(), soloTexto = true)
         }
