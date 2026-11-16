@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
-import ec.edu.puce.aruy.data.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.repository.CatalogoRepository
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.PrestadorPublico
 import ec.edu.puce.aruy.domain.model.ResumenOpiniones

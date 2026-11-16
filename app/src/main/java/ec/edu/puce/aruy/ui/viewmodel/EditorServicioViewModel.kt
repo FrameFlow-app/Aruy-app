@@ -7,8 +7,10 @@ import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.local.BorradorServicio
 import ec.edu.puce.aruy.data.local.BorradorStore
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
-import ec.edu.puce.aruy.data.repository.DatosServicio
-import ec.edu.puce.aruy.data.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.model.DatosServicio
+import ec.edu.puce.aruy.domain.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.usecase.PublicarServicioUseCase
+import ec.edu.puce.aruy.domain.usecase.ValidarFotoServicioUseCase
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.catalogo.EtiquetaFoto
 import ec.edu.puce.aruy.domain.catalogo.ResultadoFoto
@@ -84,6 +86,8 @@ data class EditorUi(
 class EditorServicioViewModel(
     servicioId: String?,
     private val repositorio: PrestadorRepository,
+    private val publicarServicio: PublicarServicioUseCase,
+    private val validarFoto: ValidarFotoServicioUseCase,
     private val sesion: SesionManager,
     private val conversor: ConversorWebp,
     private val etiquetador: EtiquetadorFotos,
@@ -188,7 +192,7 @@ class EditorServicioViewModel(
                 val imagen = conversor.convertir(uri)
                 val etiquetas = etiquetador.etiquetar(imagen.paraEtiquetar)
                 // Confianza ante todo: una foto que claramente no es de un trabajo no se agrega al portafolio
-                val revision = ValidadorFotoOficio.evaluar(etiquetas, _ui.value.categoria, _ui.value.titulo, _ui.value.descripcion)
+                val revision = validarFoto(etiquetas, _ui.value.categoria, _ui.value.titulo, _ui.value.descripcion)
                 if (revision is ResultadoFoto.Rechazada) {
                     _ui.update { it.copy(analizandoFoto = false, etiquetasUltimaFoto = etiquetas) }
                     _mensajes.tryEmit(Aviso.error(revision.mensaje))
@@ -259,8 +263,9 @@ class EditorServicioViewModel(
         _ui.update { it.copy(titulo = titulo, guardando = true, progreso = if (it.esEdicion) "Guardando…" else "Publicando…") }
         viewModelScope.launch {
             try {
-                val id = u.servicioId?.also { repositorio.editar(it, datos) }
-                    ?: repositorio.crear(datos).id.also { nuevo -> _ui.update { it.copy(servicioId = nuevo) } }
+                // El caso de uso aplica las reglas (título bien escrito, al menos una foto) y crea o edita
+                val id = publicarServicio(u.servicioId, datos, u.totalFotos).id
+                _ui.update { it.copy(servicioId = id) }
                 usuarioId?.let { runCatching { borradores.borrar(it) } }
                 subirPendientes(id)
             } catch (e: CancellationException) {

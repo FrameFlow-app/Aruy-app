@@ -41,7 +41,7 @@ class PerfilRepository(
     suspend fun miPerfil(): PerfilPrestador = prestadorApi.miPerfil().toPerfil()
 
     suspend fun actualizarMiPerfil(datos: DatosPerfilPrestador): PerfilPrestador =
-        prestadorApi.editarMiPerfil(PrestadorRepository.comoJson(cuerpoDePerfil(datos))).toPerfil()
+        prestadorApi.editarMiPerfil(PrestadorRepositoryImpl.comoJson(cuerpoDePerfil(datos))).toPerfil()
 
     /** El servidor borra la cuenta y todos sus datos (servicios, fotos, opiniones y suscripción). */
     suspend fun eliminarCuenta() = usuarioApi.eliminarMiCuenta()

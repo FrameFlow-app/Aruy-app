@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
-import ec.edu.puce.aruy.data.repository.AuthRepository
-import ec.edu.puce.aruy.data.repository.DatosRegistro
+import ec.edu.puce.aruy.domain.repository.AuthRepository
+import ec.edu.puce.aruy.domain.usecase.EdadInvalidaException
+import ec.edu.puce.aruy.domain.usecase.IniciarSesionUseCase
+import ec.edu.puce.aruy.domain.usecase.RegistrarCuentaUseCase
+import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.model.Sesion
 import kotlinx.coroutines.CancellationException
@@ -21,11 +24,17 @@ data class EstadoFormularioAuth(
     /** Mensaje general, se anuncia con `role="alert"` en el prototipo. */
     val error: String? = null,
     /** Error que pertenece al campo del correo (por ejemplo, "Ya existe una cuenta..."). */
-    val errorCorreo: String? = null
+    val errorCorreo: String? = null,
+    /** Error que pertenece al campo del celular (por ejemplo, "Ese celular ya está registrado..."). */
+    val errorCelular: String? = null,
+    /** Error de la fecha de nacimiento (por ejemplo, "Aruy es solo para mayores de 18 años."). */
+    val errorFechaNacimiento: String? = null
 )
 
 class AuthViewModel(
     private val repositorio: AuthRepository,
+    private val iniciarSesionCaso: IniciarSesionUseCase,
+    private val registrarCuentaCaso: RegistrarCuentaUseCase,
     private val sesionManager: SesionManager
 ) : ViewModel() {
 
@@ -37,14 +46,14 @@ class AuthViewModel(
 
     fun iniciarSesion(correo: String, password: String, alExito: (Sesion) -> Unit) {
         ejecutar(::mensajeDeLogin) {
-            val sesion = repositorio.iniciarSesion(correo, password)
+            val sesion = iniciarSesionCaso(correo, password)
             alExito(sesion)
         }
     }
 
     fun registrar(datos: DatosRegistro, alExito: (Sesion) -> Unit) {
         ejecutar(::mensajeDeRegistro) {
-            val sesion = repositorio.registrar(datos)
+            val sesion = registrarCuentaCaso(datos)
             alExito(sesion)
         }
     }
@@ -92,25 +101,50 @@ class AuthViewModel(
         }
 
         fun mensajeDeRegistro(error: Exception): EstadoFormularioAuth {
+            if (error is EdadInvalidaException) {
+                return EstadoFormularioAuth(errorFechaNacimiento = error.message)
+            }
             if (error is HttpException) {
                 when (error.code()) {
-                    409 -> return EstadoFormularioAuth(
-                        errorCorreo = "Ya existe una cuenta con este correo o celular. Prueba iniciar sesión."
-                    )
-                    400 -> return EstadoFormularioAuth(
-                        error = ApiErrorHandler.mensajeDelServidor(error)
-                            ?: "Revisa los datos: hay algún campo incorrecto."
-                    )
+                    409 -> return mensajeDeDuplicado(ApiErrorHandler.detalleDelServidor(error))
+                    400 -> return mensajeDeDatosInvalidos(ApiErrorHandler.detalleDelServidor(error))
                 }
             }
             return EstadoFormularioAuth(error = ApiErrorHandler.obtenerMensaje(error))
         }
 
-        fun fabrica(repositorio: AuthRepository, sesionManager: SesionManager): ViewModelProvider.Factory =
+        /** El servidor dice cuál dato está repetido: el celular o el correo. */
+        private fun mensajeDeDuplicado(detalle: ApiErrorHandler.DetalleError): EstadoFormularioAuth =
+            when (detalle.campo) {
+                "telefono" -> EstadoFormularioAuth(
+                    errorCelular = "Ese celular ya está registrado en otra cuenta. Usa otro número o inicia sesión."
+                )
+                "email" -> EstadoFormularioAuth(errorCorreo = "Ya existe una cuenta con este correo. Prueba iniciar sesión.")
+                else -> EstadoFormularioAuth(
+                    errorCorreo = "Ya existe una cuenta con este correo o celular. Prueba iniciar sesión."
+                )
+            }
+
+        private fun mensajeDeDatosInvalidos(detalle: ApiErrorHandler.DetalleError): EstadoFormularioAuth {
+            if (detalle.campo == "fecha_nacimiento") {
+                val esMenor = detalle.mensaje.orEmpty().contains("18")
+                return EstadoFormularioAuth(
+                    errorFechaNacimiento = if (esMenor) "Aruy es solo para mayores de 18 años." else "Revisa tu fecha de nacimiento."
+                )
+            }
+            return EstadoFormularioAuth(error = detalle.mensaje ?: "Revisa los datos: hay algún campo incorrecto.")
+        }
+
+        fun fabrica(
+            repositorio: AuthRepository,
+            iniciarSesion: IniciarSesionUseCase,
+            registrarCuenta: RegistrarCuentaUseCase,
+            sesionManager: SesionManager
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AuthViewModel(repositorio, sesionManager) as T
+                    AuthViewModel(repositorio, iniciarSesion, registrarCuenta, sesionManager) as T
             }
     }
 }

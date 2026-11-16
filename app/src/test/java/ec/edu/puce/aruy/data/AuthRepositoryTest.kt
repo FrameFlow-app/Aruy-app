@@ -2,8 +2,8 @@ package ec.edu.puce.aruy.data
 
 import com.google.gson.JsonParser
 import ec.edu.puce.aruy.data.remote.RetrofitClient
-import ec.edu.puce.aruy.data.repository.AuthRepository
-import ec.edu.puce.aruy.data.repository.DatosRegistro
+import ec.edu.puce.aruy.data.repository.AuthRepositoryImpl
+import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.model.EstadoSesion
 import ec.edu.puce.aruy.domain.model.RolUsuario
@@ -23,12 +23,13 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import retrofit2.HttpException
+import java.time.LocalDate
 
 class AuthRepositoryTest {
 
     private lateinit var servidor: MockWebServer
     private lateinit var sesionManager: SesionManager
-    private lateinit var repositorio: AuthRepository
+    private lateinit var repositorio: AuthRepositoryImpl
     private lateinit var cliente: RetrofitClient
 
     private val token = tokenDePrueba(System.currentTimeMillis() / 1000 + 3600)
@@ -49,7 +50,7 @@ class AuthRepositoryTest {
             alExpirar = sesionManager::expirar,
             baseUrl = servidor.url("/").toString()
         )
-        repositorio = AuthRepository(cliente.authApi, sesionManager)
+        repositorio = AuthRepositoryImpl(cliente.authApi, sesionManager)
     }
 
     @After
@@ -148,6 +149,79 @@ class AuthRepositoryTest {
             assertNotNull(estado.errorCorreo)
             assertNull(estado.error)
         }
+    }
+
+    @Test
+    fun registro_con_celular_repetido_marca_el_campo_del_celular_y_no_el_del_correo() = runBlocking {
+        servidor.enqueue(
+            MockResponse().setResponseCode(409).setBody("""{"error":"Ese celular ya esta registrado en otra cuenta","campo":"telefono"}""")
+        )
+
+        try {
+            repositorio.registrar(
+                DatosRegistro("Lucía Cevallos", "lucia.nueva@correo.com", "0998765432", "Aruy2026x", RolUsuario.CONTRATANTE)
+            )
+            fail("Debía fallar con 409")
+        } catch (e: HttpException) {
+            val estado = AuthViewModel.mensajeDeRegistro(e)
+            assertNotNull(estado.errorCelular)
+            assertNull(estado.errorCorreo)
+            assertNull(estado.error)
+        }
+    }
+
+    @Test
+    fun registro_con_correo_repetido_segun_el_servidor_marca_solo_el_correo() = runBlocking {
+        servidor.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":"Ese correo ya esta registrado","campo":"email"}"""))
+
+        try {
+            repositorio.registrar(
+                DatosRegistro("Lucía Cevallos", "lucia@correo.com", "0991234567", "Aruy2026x", RolUsuario.CONTRATANTE)
+            )
+            fail("Debía fallar con 409")
+        } catch (e: HttpException) {
+            val estado = AuthViewModel.mensajeDeRegistro(e)
+            assertNotNull(estado.errorCorreo)
+            assertNull(estado.errorCelular)
+        }
+    }
+
+    @Test
+    fun el_registro_envia_la_fecha_de_nacimiento_en_formato_iso() = runBlocking {
+        servidor.enqueue(MockResponse().setResponseCode(201).setBody(respuestaOk))
+        repositorio.registrar(
+            DatosRegistro(
+                "Lucía Cevallos", "lucia@correo.com", "0998765432", "Aruy2026x", RolUsuario.CONTRATANTE,
+                fechaNacimiento = LocalDate.of(2000, 3, 25)
+            )
+        )
+        val cuerpo = JsonParser.parseString(servidor.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("2000-03-25", cuerpo.get("fecha_nacimiento").asString)
+    }
+
+    @Test
+    fun un_menor_segun_el_servidor_marca_la_fecha_de_nacimiento_y_no_el_error_general() = runBlocking {
+        servidor.enqueue(
+            MockResponse().setResponseCode(400)
+                .setBody("""{"error":"Aruy es solo para mayores de 18 anos","campo":"fecha_nacimiento"}""")
+        )
+        try {
+            repositorio.registrar(
+                DatosRegistro("Lucía Cevallos", "lucia@correo.com", "0998765432", "Aruy2026x", RolUsuario.CONTRATANTE, fechaNacimiento = LocalDate.of(2015, 1, 1))
+            )
+            fail("Debía fallar con 400")
+        } catch (e: HttpException) {
+            val estado = AuthViewModel.mensajeDeRegistro(e)
+            assertEquals("Aruy es solo para mayores de 18 años.", estado.errorFechaNacimiento)
+            assertNull(estado.error)
+        }
+    }
+
+    @Test
+    fun el_caso_de_uso_de_edad_se_muestra_en_el_campo_de_la_fecha() {
+        val estado = AuthViewModel.mensajeDeRegistro(ec.edu.puce.aruy.domain.usecase.EdadInvalidaException("Aruy es solo para mayores de 18 años."))
+        assertEquals("Aruy es solo para mayores de 18 años.", estado.errorFechaNacimiento)
+        assertNull(estado.error)
     }
 
     @Test

@@ -50,7 +50,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import ec.edu.puce.aruy.data.repository.DatosRegistro
+import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.RolUsuario
 import ec.edu.puce.aruy.domain.validation.Validaciones
@@ -78,6 +78,7 @@ fun RegistroScreen(
     var nombre by rememberSaveable { mutableStateOf("") }
     var correo by rememberSaveable { mutableStateOf("") }
     var celular by rememberSaveable { mutableStateOf("") }
+    var fechaNacimiento by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var verPassword by rememberSaveable { mutableStateOf(false) }
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
@@ -87,6 +88,7 @@ fun RegistroScreen(
     var errorNombre by rememberSaveable { mutableStateOf<String?>(null) }
     var errorCorreo by rememberSaveable { mutableStateOf<String?>(null) }
     var errorCelular by rememberSaveable { mutableStateOf<String?>(null) }
+    var errorFecha by rememberSaveable { mutableStateOf<String?>(null) }
     var errorPassword by rememberSaveable { mutableStateOf<String?>(null) }
     var errorOficio by rememberSaveable { mutableStateOf<String?>(null) }
     var errorAcepta by rememberSaveable { mutableStateOf<String?>(null) }
@@ -100,10 +102,12 @@ fun RegistroScreen(
         errorNombre = Validaciones.nombre(nombre)
         errorCorreo = Validaciones.correo(correo)
         errorCelular = Validaciones.celular(celular)
+        val nacimiento = Validaciones.fechaNacimiento(fechaNacimiento)
+        errorFecha = nacimiento.error
         errorPassword = Validaciones.password(password)
         errorOficio = if (rol == RolUsuario.PRESTADOR && oficio == null) "Elige qué servicio ofreces." else null
         errorAcepta = if (!acepta) "Para crear tu cuenta acepta las normas." else null
-        val hayError = listOf(errorNombre, errorCorreo, errorCelular, errorPassword, errorOficio, errorAcepta)
+        val hayError = listOf(errorNombre, errorCorreo, errorCelular, errorFecha, errorPassword, errorOficio, errorAcepta)
             .any { it != null }
         if (!hayError) {
             viewModel.registrar(
@@ -114,7 +118,8 @@ fun RegistroScreen(
                     password = password,
                     rol = rol,
                     oficio = oficio?.etiqueta,
-                    zona = zona
+                    zona = zona,
+                    fechaNacimiento = nacimiento.fecha
                 )
             ) {}
         }
@@ -182,8 +187,17 @@ fun RegistroScreen(
                     etiqueta = "Celular",
                     placeholder = "0998765432",
                     ayuda = "Las personas te contactan por este número en WhatsApp.",
-                    error = errorCelular,
+                    error = errorCelular ?: formulario.errorCelular,
                     teclado = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+                )
+                AruyCampo(
+                    valor = fechaNacimiento,
+                    onValor = { fechaNacimiento = Validaciones.formatearFecha(it); errorFecha = null },
+                    etiqueta = "Fecha de nacimiento",
+                    placeholder = "25/03/2000",
+                    ayuda = "Aruy es solo para mayores de 18 años.",
+                    error = errorFecha ?: formulario.errorFechaNacimiento,
+                    teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
                 )
                 AruyCampo(
                     valor = password,

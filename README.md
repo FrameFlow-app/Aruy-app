@@ -25,7 +25,7 @@ API REST (Node.js + Express, en Render)
    └──► Supabase Storage: fotos de los trabajos y de perfil (solo WebP)
 ```
 
-- **App:** Kotlin, Jetpack Compose (Material 3), arquitectura MVVM, Room (guardados, bloqueados y reportes en el teléfono), Retrofit + OkHttp, DataStore, Coil, ML Kit Image Labeling, corrutinas.
+- **App:** Kotlin, Jetpack Compose (Material 3), **Clean Architecture + MVVM** (capas `domain`, `data` y `ui`; el dominio es Kotlin puro con las **interfaces de los repositorios** y los **casos de uso**; los repositorios `*Impl` viven en `data`), flujo unidireccional de datos con `StateFlow`, Room (guardados, bloqueados y reportes en el teléfono), Retrofit + OkHttp, DataStore, Coil, ML Kit Image Labeling, corrutinas.
 - **Servidor:** carpeta `arruy-backend`. Node.js 20.9 o superior, Express 5, `pg`, `bcryptjs`, `jsonwebtoken`, `helmet`, `express-rate-limit`, `sharp` (convierte las fotos a WebP) y Swagger en `/docs`.
 - **Base de datos:** Neon (PostgreSQL). **Fotos:** Supabase Storage (bucket público `aruy-portafolio`; la base solo guarda la ruta).
 
@@ -60,6 +60,8 @@ npm test                 # pruebas automáticas
 ```
 
 Documentación interactiva de la API: `http://localhost:3000/docs` (en la nube: https://aruy-api.onrender.com/docs).
+
+Base de datos: el script `arruy-backend/db/001_fecha_nacimiento.sql` agrega la columna `usuarios.fecha_nacimiento` (Aruy es solo para mayores de 18 años). Se ejecuta **una vez** en el SQL Editor de Neon; hasta entonces el servidor valida la edad igual, pero no guarda la fecha.
 
 Variables del archivo `.env` (nunca se sube a GitHub):
 
@@ -118,6 +120,7 @@ Todo lo marcado con *token* necesita el encabezado `Authorization: Bearer <token
 
 ## Seguridad y privacidad
 
+- Solo se registran **mayores de 18 años** (la app y el servidor lo comprueban).
 - Contraseñas con `bcrypt`; sesiones con JWT (30 días); el rol viaja dentro del token.
 - Límites de velocidad por cuenta, por usuario y por red (en una misma red muchas personas no se bloquean entre sí).
 - Las fotos se convierten a WebP, se les quita la información de ubicación (EXIF) y no pasan de 500 KB.

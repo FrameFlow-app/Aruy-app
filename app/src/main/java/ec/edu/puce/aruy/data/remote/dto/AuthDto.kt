@@ -17,6 +17,7 @@ data class RegistroRequest(
     @SerializedName("email") val email: String,
     @SerializedName("password") val password: String,
     @SerializedName("rol") val rol: String,
+    @SerializedName("fecha_nacimiento") val fechaNacimiento: String? = null,
     @SerializedName("oficio_principal") val oficioPrincipal: String? = null,
     @SerializedName("zona_cobertura") val zonaCobertura: String? = null,
     @SerializedName("descripcion_profesional") val descripcionProfesional: String? = null,

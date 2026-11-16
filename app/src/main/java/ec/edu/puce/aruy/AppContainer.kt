@@ -8,14 +8,23 @@ import ec.edu.puce.aruy.data.local.PreferenciasStore
 import ec.edu.puce.aruy.data.red.ConexionRed
 import ec.edu.puce.aruy.data.remote.RetrofitClient
 import ec.edu.puce.aruy.data.repository.ActividadLocalRepository
-import ec.edu.puce.aruy.data.repository.AuthRepository
-import ec.edu.puce.aruy.data.repository.CatalogoRepository
+import ec.edu.puce.aruy.data.repository.AuthRepositoryImpl
+import ec.edu.puce.aruy.data.repository.CatalogoRepositoryImpl
 import ec.edu.puce.aruy.data.repository.FavoritoRepository
 import ec.edu.puce.aruy.data.repository.PerfilRepository
-import ec.edu.puce.aruy.data.repository.PrestadorRepository
+import ec.edu.puce.aruy.data.repository.PrestadorRepositoryImpl
 import ec.edu.puce.aruy.data.repository.SuscripcionRepository
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.data.sesion.SesionStore
+import ec.edu.puce.aruy.domain.repository.AuthRepository
+import ec.edu.puce.aruy.domain.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.usecase.IniciarSesionUseCase
+import ec.edu.puce.aruy.domain.usecase.ObtenerCatalogoUseCase
+import ec.edu.puce.aruy.domain.usecase.PublicarServicioUseCase
+import ec.edu.puce.aruy.domain.usecase.RegistrarCuentaUseCase
+import ec.edu.puce.aruy.domain.usecase.SubirFotoPortafolioUseCase
+import ec.edu.puce.aruy.domain.usecase.ValidarFotoServicioUseCase
 import ec.edu.puce.aruy.ui.viewmodel.ActividadLocalViewModel
 import ec.edu.puce.aruy.ui.viewmodel.AjustesViewModel
 import ec.edu.puce.aruy.ui.viewmodel.AruyProViewModel
@@ -60,22 +69,32 @@ class AppContainer(contexto: Context) {
     val etiquetadorFotos = EtiquetadorFotos()
     val borradorStore = BorradorStore(contexto.applicationContext)
 
-    val authRepository = AuthRepository(cliente.authApi, sesionManager)
-    val prestadorRepository = PrestadorRepository(cliente.prestadorApi, cliente.servicioApi)
+    // Los ViewModels y los casos de uso solo conocen las interfaces del dominio; aquí se elige la implementación
+    val authRepository: AuthRepository = AuthRepositoryImpl(cliente.authApi, sesionManager)
+    val prestadorRepository: PrestadorRepository = PrestadorRepositoryImpl(cliente.prestadorApi, cliente.servicioApi)
     val perfilRepository = PerfilRepository(cliente.usuarioApi, cliente.prestadorApi)
     val suscripcionRepository = SuscripcionRepository(cliente.suscripcionApi)
-    val catalogoRepository = CatalogoRepository(cliente.servicioApi, cliente.perfilApi, cliente.calificacionApi)
+    val catalogoRepository: CatalogoRepository =
+        CatalogoRepositoryImpl(cliente.servicioApi, cliente.perfilApi, cliente.calificacionApi)
     val favoritoRepository = FavoritoRepository(database.favoritoDao())
     val actividadLocalRepository = ActividadLocalRepository(
         database.bloqueadoDao(), database.contactoDao(), database.reporteDao(), database.vistoDao()
     )
 
-    val authViewModelFactory = AuthViewModel.fabrica(authRepository, sesionManager)
+    // Casos de uso: cada intención de la persona vive en su propia clase, con sus reglas de negocio
+    val iniciarSesionCaso = IniciarSesionUseCase(authRepository)
+    val registrarCuentaCaso = RegistrarCuentaUseCase(authRepository)
+    val obtenerCatalogoCaso = ObtenerCatalogoUseCase(catalogoRepository)
+    val validarFotoCaso = ValidarFotoServicioUseCase()
+    val publicarServicioCaso = PublicarServicioUseCase(prestadorRepository)
+    val subirFotoCaso = SubirFotoPortafolioUseCase(prestadorRepository, validarFotoCaso)
+
+    val authViewModelFactory = AuthViewModel.fabrica(authRepository, iniciarSesionCaso, registrarCuentaCaso, sesionManager)
     val catalogoViewModelFactory: ViewModelProvider.Factory =
-        fabricaVm { CatalogoViewModel(catalogoRepository, actividadLocalRepository, sesionManager) }
+        fabricaVm { CatalogoViewModel(catalogoRepository, obtenerCatalogoCaso, actividadLocalRepository, sesionManager) }
     val buscarViewModelFactory: ViewModelProvider.Factory = fabricaVm { BuscarViewModel() }
     val misServiciosViewModelFactory: ViewModelProvider.Factory =
-        fabricaVm { MisServiciosViewModel(prestadorRepository, sesionManager, conversorWebp, etiquetadorFotos) }
+        fabricaVm { MisServiciosViewModel(prestadorRepository, subirFotoCaso, sesionManager, conversorWebp, etiquetadorFotos) }
 
     val editarPerfilViewModelFactory: ViewModelProvider.Factory =
         fabricaVm { EditarPerfilViewModel(perfilRepository, sesionManager) }
@@ -91,7 +110,9 @@ class AppContainer(contexto: Context) {
     val ajustesViewModelFactory: ViewModelProvider.Factory = fabricaVm { AjustesViewModel(preferencias) }
 
     fun editorViewModelFactory(servicioId: String?): ViewModelProvider.Factory = fabricaVm {
-        EditorServicioViewModel(servicioId, prestadorRepository, sesionManager, conversorWebp, etiquetadorFotos, borradorStore)
+        EditorServicioViewModel(
+            servicioId, prestadorRepository, publicarServicioCaso, validarFotoCaso, sesionManager, conversorWebp, etiquetadorFotos, borradorStore
+        )
     }
     val actividadLocalViewModelFactory: ViewModelProvider.Factory =
         fabricaVm { ActividadLocalViewModel(favoritoRepository, actividadLocalRepository, sesionManager) }

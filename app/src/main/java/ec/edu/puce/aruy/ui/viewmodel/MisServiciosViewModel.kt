@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
-import ec.edu.puce.aruy.data.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.usecase.ResultadoSubidaFoto
+import ec.edu.puce.aruy.domain.usecase.SubirFotoPortafolioUseCase
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.catalogo.ResultadoFoto
 import ec.edu.puce.aruy.domain.catalogo.SugerenciaCategoria
@@ -51,6 +53,7 @@ data class MisServiciosUi(
  */
 class MisServiciosViewModel(
     private val repositorio: PrestadorRepository,
+    private val subirFotoCaso: SubirFotoPortafolioUseCase,
     private val sesion: SesionManager,
     private val conversor: ConversorWebp,
     private val etiquetador: EtiquetadorFotos
@@ -182,17 +185,19 @@ class MisServiciosViewModel(
             try {
                 val imagen = conversor.convertir(uri)
                 val etiquetas = etiquetador.etiquetar(imagen.paraEtiquetar)
-                // Confianza ante todo: una foto que claramente no es de este servicio no se sube
+                // Confianza ante todo: una foto que claramente no es de este servicio no se sube (lo decide el caso de uso)
                 val servicio = actual?.servicio
-                val revision = ValidadorFotoOficio.evaluar(
-                    etiquetas, servicio?.categoria, servicio?.titulo.orEmpty(), servicio?.descripcion.orEmpty()
+                val resultado = subirFotoCaso(
+                    servicioId, imagen.webp, etiquetas, servicio?.categoria, servicio?.titulo.orEmpty(), servicio?.descripcion.orEmpty()
                 )
-                if (revision is ResultadoFoto.Rechazada) {
-                    _ui.update { it.copy(subiendoFoto = false) }
-                    _mensajes.tryEmit(Aviso.error(revision.mensaje))
-                    return@launch
+                val foto = when (resultado) {
+                    is ResultadoSubidaFoto.Rechazada -> {
+                        _ui.update { it.copy(subiendoFoto = false) }
+                        _mensajes.tryEmit(Aviso.error(resultado.mensaje))
+                        return@launch
+                    }
+                    is ResultadoSubidaFoto.Subida -> resultado.foto
                 }
-                val foto = repositorio.subirFoto(servicioId, imagen.webp, etiquetas.map { it.texto })
                 _ui.update { estado ->
                     estado.copy(
                         subiendoFoto = false,

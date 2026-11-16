@@ -10,6 +10,7 @@ import ec.edu.puce.aruy.domain.model.PrestadorPublico
 import ec.edu.puce.aruy.domain.model.ResumenOpiniones
 import ec.edu.puce.aruy.domain.model.Servicio
 import ec.edu.puce.aruy.domain.model.ServicioConPrestador
+import ec.edu.puce.aruy.domain.repository.CatalogoRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -21,15 +22,15 @@ import java.util.concurrent.ConcurrentHashMap
  * con `GET /perfiles/{id}`. Si también falla, el catálogo sigue funcionando y los servicios
  * salen sin nombre ni calificación.
  */
-class CatalogoRepository(
+class CatalogoRepositoryImpl(
     private val servicioApi: ServicioApi,
     private val perfilApi: PerfilApi,
     private val calificacionApi: CalificacionApi
-) {
+) : CatalogoRepository {
 
     private val fotosEnMemoria = ConcurrentHashMap<String, List<FotoPortafolio>>()
 
-    suspend fun cargarCatalogo(): List<ServicioConPrestador> = coroutineScope {
+    override suspend fun cargarCatalogo(): List<ServicioConPrestador> = coroutineScope {
         val servicios = servicioApi.obtenerServicios().map { it.toDomain() }
         val prestadores = intentar { perfilApi.listar().map { it.toDomain() } }
             ?: servicios.map { it.prestadorId }.distinct()
@@ -40,16 +41,16 @@ class CatalogoRepository(
     }
 
     /** null si el prestador no existe o el servidor no responde. */
-    suspend fun prestador(perfilId: String): PrestadorPublico? =
+    override suspend fun prestador(perfilId: String): PrestadorPublico? =
         intentar { perfilApi.obtener(perfilId).toDomain() }
 
-    suspend fun servicio(id: String): Servicio = servicioApi.obtenerServicioPorId(id).toDomain()
+    override suspend fun servicio(id: String): Servicio = servicioApi.obtenerServicioPorId(id).toDomain()
 
-    suspend fun serviciosDe(perfilId: String): List<Servicio> =
+    override suspend fun serviciosDe(perfilId: String): List<Servicio> =
         servicioApi.obtenerServiciosPorPrestador(perfilId).map { it.toDomain() }
 
     /** Las fotos se guardan en memoria: el catálogo pide la portada de cada tarjeta al mostrarla. */
-    suspend fun fotos(servicioId: String, forzar: Boolean = false): List<FotoPortafolio> {
+    override suspend fun fotos(servicioId: String, forzar: Boolean): List<FotoPortafolio> {
         if (!forzar) fotosEnMemoria[servicioId]?.let { return it }
         val fotos = servicioApi.obtenerFotos(servicioId)
             .map { it.toDomain(servicioId) }
@@ -58,10 +59,10 @@ class CatalogoRepository(
         return fotos
     }
 
-    suspend fun opiniones(perfilId: String): ResumenOpiniones =
+    override suspend fun opiniones(perfilId: String): ResumenOpiniones =
         calificacionApi.listar(perfilId).toDomain()
 
-    suspend fun calificar(perfilId: String, puntuacion: Int, comentario: String?) {
+    override suspend fun calificar(perfilId: String, puntuacion: Int, comentario: String?) {
         calificacionApi.calificar(CalificarRequest(perfilId, puntuacion, comentario?.trim()?.takeIf { it.isNotEmpty() }))
     }
 

@@ -44,6 +44,16 @@ object ApiErrorHandler {
     }
 
     /** El backend responde los errores como `{"error": "texto"}`; devuelve ese texto si viene. */
+    /** Lo que el servidor dice de un error: el texto y, si lo indica, qué dato tiene el problema (`campo`). */
+    data class DetalleError(val mensaje: String?, val campo: String?)
+
+    /** Lee el cuerpo `{"error": "...", "campo": "..."}` una sola vez (el cuerpo no se puede leer dos veces). */
+    fun detalleDelServidor(error: HttpException): DetalleError = runCatching {
+        val cuerpo = error.response()?.errorBody()?.string() ?: return DetalleError(null, null)
+        val json = JsonParser.parseString(cuerpo).asJsonObject
+        DetalleError(json.get("error")?.asString, json.get("campo")?.asString)
+    }.getOrDefault(DetalleError(null, null))
+
     fun mensajeDelServidor(error: HttpException): String? = runCatching {
         val cuerpo = error.response()?.errorBody()?.string() ?: return null
         JsonParser.parseString(cuerpo).asJsonObject.get("error")?.asString
