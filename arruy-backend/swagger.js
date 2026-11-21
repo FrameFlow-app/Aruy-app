@@ -36,6 +36,7 @@ const tags = [
   { name: 'Perfiles', description: 'Perfil del prestador (oficio y zona)' },
   { name: 'Servicios', description: 'Catálogo de servicios y su publicación' },
   { name: 'Fotos', description: 'Etiquetas de las fotos del portafolio (IA)' },
+  { name: 'Avisos', description: 'Mantenimiento y versiones de la app (público)' },
   { name: 'Solicitudes', description: 'Pedirle un servicio a un prestador, dentro de la app' },
 ];
 
@@ -51,6 +52,42 @@ const paths = {
         200: {
           description: 'El servidor está funcionando',
           content: json({ type: 'object', properties: { estado: { type: 'string', example: 'ok' } } }),
+        },
+      },
+    },
+  },
+
+  '/avisos': {
+    get: {
+      tags: ['Avisos'],
+      summary: 'Aviso de mantenimiento y versiones de la app',
+      description: 'Público (sin token). Se configura con variables de entorno. Cache-Control: public, max-age=300.',
+      responses: {
+        200: {
+          description: '`mantenimiento` es null si no hay aviso o si ya pasó su fin',
+          content: json({
+            type: 'object',
+            properties: {
+              mantenimiento: {
+                nullable: true,
+                type: 'object',
+                properties: {
+                  activo: { type: 'boolean', example: true },
+                  mensaje: { type: 'string' },
+                  inicio: { type: 'string', format: 'date-time', nullable: true },
+                  fin: { type: 'string', format: 'date-time', nullable: true },
+                },
+              },
+              version: {
+                type: 'object',
+                properties: {
+                  reciente: { type: 'integer', example: 12 },
+                  minima: { type: 'integer', example: 10 },
+                  notas: { type: 'string' },
+                },
+              },
+            },
+          }),
         },
       },
     },

@@ -113,6 +113,7 @@ app.post('/auth/olvide', limiteOlvideIp, limiteOlvideCorreo, limiteAuthPorIp);
 app.post('/auth/restablecer', limiteRestablecer, limiteAuthPorIp);
 app.post('/auth/registro', limiteRegistro, limiteAuthPorIp);
 app.use('/auth', require('./routes/auth'));
+app.use('/avisos', require('./routes/avisos'));
 // Enviar solicitudes: no mas de 30 por hora por persona (evita llenar de mensajes a un prestador)
 const limiteSolicitudes = rateLimit({
   windowMs: 60 * 60 * 1000,

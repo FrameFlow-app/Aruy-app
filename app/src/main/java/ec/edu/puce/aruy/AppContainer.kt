@@ -24,6 +24,12 @@ import ec.edu.puce.aruy.domain.repository.SolicitudRepository
 import ec.edu.puce.aruy.data.solicitudes.ResumenSolicitudesStore
 import ec.edu.puce.aruy.data.repository.SolicitudRepositoryImpl
 import android.content.Context
+import ec.edu.puce.aruy.data.local.AvisosVistosStore
+import ec.edu.puce.aruy.data.repository.AvisosRepositoryImpl
+import ec.edu.puce.aruy.domain.repository.AvisosRepository
+import ec.edu.puce.aruy.domain.usecase.MarcarMantenimientoVistoUseCase
+import ec.edu.puce.aruy.domain.usecase.ObtenerAvisosUseCase
+import ec.edu.puce.aruy.domain.usecase.OmitirVersionUseCase
 import androidx.lifecycle.ViewModelProvider
 import ec.edu.puce.aruy.data.local.BorradorStore
 import ec.edu.puce.aruy.data.local.DatabaseProvider
@@ -100,6 +106,12 @@ class AppContainer(contexto: Context) {
 
     // Los ViewModels y los casos de uso solo conocen las interfaces del dominio; aquí se elige la implementación
     val renovadorSesion = RenovadorSesion(cliente.authApi, sesionManager)
+
+    // Avisos del servidor: mantenimiento y versión nueva
+    val avisosRepository: AvisosRepository = AvisosRepositoryImpl(cliente.avisosApi, AvisosVistosStore(contexto.applicationContext))
+    val obtenerAvisosCaso = ObtenerAvisosUseCase(avisosRepository)
+    val marcarMantenimientoVistoCaso = MarcarMantenimientoVistoUseCase(avisosRepository)
+    val omitirVersionCaso = OmitirVersionUseCase(avisosRepository)
 
     // Solicitudes dentro de la app y sus avisos
     val solicitudRepository: SolicitudRepository = SolicitudRepositoryImpl(cliente.solicitudApi)

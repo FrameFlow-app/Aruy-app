@@ -1,6 +1,13 @@
 package ec.edu.puce.aruy.ui.navigation
 
 import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
+import ec.edu.puce.aruy.BuildConfig
+import ec.edu.puce.aruy.domain.model.Actualizacion
+import ec.edu.puce.aruy.domain.usecase.AvisosParaMostrar
+import ec.edu.puce.aruy.ui.components.DialogoActualizacion
+import ec.edu.puce.aruy.ui.components.DialogoMantenimiento
+import ec.edu.puce.aruy.ui.components.abrirActualizacion
 import ec.edu.puce.aruy.ui.viewmodel.SolicitudesViewModel
 import ec.edu.puce.aruy.ui.screen.solicitudes.SolicitudesScreen
 import ec.edu.puce.aruy.ui.screen.solicitudes.ChatScreen
@@ -204,6 +211,52 @@ fun AruyApp(
         if (abrirRuta != null && estadoDeSesion == 1 && rutaActual != Rutas.SPLASH) {
             navController.navigate(abrirRuta)
             alAbrirRuta()
+        }
+    }
+
+    // Avisos del servidor (mantenimiento y versión nueva): una vez por arranque, cuando ya se leyó la sesión.
+    // Si falla la red no se muestra nada.
+    val contextoApp = LocalContext.current
+    var avisosPendientes by remember { mutableStateOf<AvisosParaMostrar?>(null) }
+    var mantenimientoPorMostrar by remember { mutableStateOf(false) }
+    var actualizacionPorMostrar by remember { mutableStateOf(false) }
+    val sesionResuelta = estadoDeSesion != 0
+    LaunchedEffect(sesionResuelta) {
+        if (!sesionResuelta) return@LaunchedEffect
+        val resultado = runCatching { contenedor.obtenerAvisosCaso(BuildConfig.VERSION_CODE) }.getOrNull() ?: return@LaunchedEffect
+        avisosPendientes = resultado
+        // La obligatoria va sola; si no, primero mantenimiento y luego la opcional
+        if (resultado.decision.actualizacion != Actualizacion.OBLIGATORIA) {
+            mantenimientoPorMostrar = resultado.decision.mostrarMantenimiento
+        }
+        actualizacionPorMostrar = resultado.decision.actualizacion != Actualizacion.NINGUNA
+    }
+    avisosPendientes?.let { pendientes ->
+        val obligatoria = pendientes.decision.actualizacion == Actualizacion.OBLIGATORIA
+        val mantenimiento = pendientes.avisos.mantenimiento
+        when {
+            obligatoria -> DialogoActualizacion(
+                obligatoria = true,
+                notas = pendientes.avisos.version.notas,
+                onActualizar = { abrirActualizacion(contextoApp) },
+                onMasTarde = {}
+            )
+            mantenimientoPorMostrar && mantenimiento != null -> DialogoMantenimiento(mantenimiento) {
+                mantenimientoPorMostrar = false
+                alcanceApp.launch { contenedor.marcarMantenimientoVistoCaso(mantenimiento.huella) }
+            }
+            actualizacionPorMostrar -> DialogoActualizacion(
+                obligatoria = false,
+                notas = pendientes.avisos.version.notas,
+                onActualizar = {
+                    actualizacionPorMostrar = false
+                    abrirActualizacion(contextoApp)
+                },
+                onMasTarde = {
+                    actualizacionPorMostrar = false
+                    alcanceApp.launch { contenedor.omitirVersionCaso(pendientes.avisos.version.reciente) }
+                }
+            )
         }
     }
 

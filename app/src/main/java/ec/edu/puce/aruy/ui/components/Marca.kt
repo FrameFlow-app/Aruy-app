@@ -1,13 +1,15 @@
 package ec.edu.puce.aruy.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.painterResource
+import ec.edu.puce.aruy.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -31,32 +33,28 @@ import ec.edu.puce.aruy.ui.theme.Anil
 import ec.edu.puce.aruy.ui.theme.FuenteTitulos
 import ec.edu.puce.aruy.ui.theme.Maiz
 
-/** Marca de Aruy (assets/icon.svg del prototipo): cuadro anil, "A" blanca y barra de maíz cosida. */
+/** Logotipo de Aruy: el mismo ícono de la app (fondo anil y "A" con barra de maíz), recortado en círculo. */
 @Composable
 fun MarcaAruy(modifier: Modifier = Modifier, tamano: Dp = 96.dp) {
     Box(
         modifier = modifier
             .size(tamano)
-            .clip(RoundedCornerShape(tamano * 0.22f))
-            .background(Anil)
-            .semantics { contentDescription = "Aruy" },
+            .clip(CircleShape)
+            .background(Anil),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            "A",
-            color = androidx.compose.ui.graphics.Color.White,
-            fontFamily = FuenteTitulos,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = (tamano.value * 0.58f).sp,
-            modifier = Modifier.offset(y = -(tamano * 0.04f))
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize()
         )
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = -(tamano * 0.2f))
-                .width(tamano * 0.46f)
-                .height(tamano * 0.07f)
-                .background(Maiz)
+        // El primer plano del ícono deja margen de seguridad: se amplía para que se lea bien dentro del círculo
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = "Logotipo de Aruy",
+            modifier = Modifier
+                .fillMaxSize()
+                .scale(1.3f)
         )
     }
 }
