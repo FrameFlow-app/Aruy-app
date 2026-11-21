@@ -1,11 +1,13 @@
 package ec.edu.puce.aruy.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -19,24 +21,18 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import ec.edu.puce.aruy.ui.theme.AruyTheme
+import ec.edu.puce.aruy.ui.theme.Espacios
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
-import ec.edu.puce.aruy.ui.theme.Jade
 
 /** Si algo salió bien (verde) o hubo un problema (rojo). */
 enum class TipoAviso { EXITO, ERROR }
@@ -72,61 +68,56 @@ suspend fun SnackbarHostState.avisar(aviso: Aviso, accion: String? = null): Bool
         )
     ) == SnackbarResult.ActionPerformed
 
-/** Coloca el aviso en el centro de la ventana, para que nadie lo pase por alto. */
-private object CentroDeLaVentana : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize
-    ): IntOffset = IntOffset(
-        (windowSize.width - popupContentSize.width) / 2,
-        (windowSize.height - popupContentSize.height) / 2
-    )
-}
-
 /**
- * Lugar de los avisos de la pantalla: aparecen en el CENTRO, en verde para los éxitos y en rojo para los
- * errores. Se cierran solos (o al tocarlos).
+ * Lugar de los avisos de la pantalla: una tarjeta con los colores del tema (verde para éxitos, rojo para errores)
+ * que se apoya sobre la barra flotante, sin tapar botones. Se cierra sola (o al tocarla).
  */
 @Composable
 fun AvisoHost(estado: SnackbarHostState, modifier: Modifier = Modifier) {
-    SnackbarHost(estado, modifier) { datos -> AvisoCentrado(datos) }
+    SnackbarHost(estado, modifier) { datos -> AvisoTarjeta(datos) }
 }
 
 @Composable
-private fun AvisoCentrado(datos: SnackbarData) {
+private fun AvisoTarjeta(datos: SnackbarData) {
     val visuales = datos.visuals
     val esError = (visuales as? AvisoVisuals)?.tipo == TipoAviso.ERROR
-    val fondo = if (esError) MaterialTheme.colorScheme.error else Jade
-    val letra = if (esError) MaterialTheme.colorScheme.onError else Color.White
-    Popup(popupPositionProvider = CentroDeLaVentana, properties = PopupProperties(focusable = false)) {
+    val colores = AruyTheme.colores
+    val esquema = MaterialTheme.colorScheme
+    val fondo = if (esError) esquema.errorContainer else colores.okContainer
+    val letra = if (esError) esquema.onErrorContainer else colores.onOkContainer
+    Box(Modifier.fillMaxWidth().padding(horizontal = Espacios.l, vertical = Espacios.s), contentAlignment = Alignment.Center) {
         Surface(
-            onClick = { datos.dismiss() },
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.medium,
             color = fondo,
             contentColor = letra,
-            shadowElevation = 8.dp,
-            modifier = Modifier.padding(24.dp).widthIn(max = 340.dp)
+            shadowElevation = Espacios.s,
+            modifier = Modifier
+                .widthIn(max = 480.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .clickable(onClickLabel = "Cerrar aviso", role = Role.Button) { datos.dismiss() }
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Row(
+                modifier = Modifier.padding(start = Espacios.l, end = Espacios.s, top = Espacios.s, bottom = Espacios.s),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Espacios.m)
             ) {
                 Icon(
                     imageVector = if (esError) Icons.Filled.ErrorOutline else Icons.Filled.CheckCircle,
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(Espacios.xxl)
                 )
                 Text(
                     text = visuales.message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(vertical = Espacios.s)
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 )
                 visuales.actionLabel?.let { accion ->
-                    TextButton(onClick = { datos.performAction() }) { Text(accion, color = letra) }
+                    BotonTexto(texto = accion, onClick = { datos.performAction() })
                 }
             }
         }

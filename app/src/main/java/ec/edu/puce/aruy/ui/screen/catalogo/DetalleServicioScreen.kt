@@ -115,7 +115,7 @@ fun DetalleServicioScreen(
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
-    val pedirNotificaciones = rememberPedirNotificaciones()
+    val pedirNotificaciones = rememberPedirNotificaciones(snackbar)
 
     var pestana by rememberSaveable { mutableStateOf(0) }
     var hoja by rememberSaveable { mutableStateOf<String?>(null) }

@@ -3,7 +3,9 @@ package ec.edu.puce.aruy.ui.screen.catalogo
 import androidx.compose.ui.Alignment
 import ec.edu.puce.aruy.ui.components.BotonContorno
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Badge
+import ec.edu.puce.aruy.ui.components.TipoPastilla
+import ec.edu.puce.aruy.ui.components.Pastilla
+import ec.edu.puce.aruy.ui.components.BotonTexto
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,7 +33,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,7 +102,7 @@ fun InicioScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalAlignment = Alignment.CenterVertically) {
                         if (!invitado) {
                             // La campanita: lleva a Mis solicitudes y muestra cuántas cosas nuevas hay
-                            BadgedBox(badge = { if (solicitudesNuevas > 0) Badge { Text("$solicitudesNuevas") } }) {
+                            BadgedBox(badge = { if (solicitudesNuevas > 0) Pastilla("$solicitudesNuevas", tipo = TipoPastilla.ERROR) }) {
                                 BotonCircular(
                                     icono = Icons.Filled.Notifications,
                                     descripcion = if (solicitudesNuevas > 0) "Mis solicitudes: $solicitudesNuevas sin ver" else "Mis solicitudes",
@@ -214,7 +215,7 @@ private fun LazyListScope.contenido(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
                 TituloSeccion("Disponibles ahora", accion = {
-                    TextButton(onClick = { onVerTodos(null) }) { Text("Ver todos") }
+                    BotonTexto("Ver todos", onClick = { onVerTodos(null) })
                 })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
                     items(disponibles, key = { it.id }) { item ->
@@ -232,7 +233,7 @@ private fun LazyListScope.contenido(
 
     item {
         TituloSeccion("Mejor valorados", accion = {
-            TextButton(onClick = { onVerTodos(OrdenCatalogo.MEJOR_CALIFICACION) }) { Text("Ver todos") }
+            BotonTexto("Ver todos", onClick = { onVerTodos(OrdenCatalogo.MEJOR_CALIFICACION) })
         })
     }
     items(mejores.chunked(2), key = { par -> "mejor-" + par.joinToString("-") { it.id } }) { par ->

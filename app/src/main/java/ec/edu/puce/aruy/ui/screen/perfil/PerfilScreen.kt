@@ -157,7 +157,7 @@ fun PerfilScreen(
         }
 
         GrupoFilas("Privacidad y seguridad") {
-            FilaAjuste(Icons.Filled.Lock, "Permisos", onPermisos, texto = "Cámara y galería")
+            FilaAjuste(Icons.Filled.Lock, "Permisos", onPermisos, texto = "Notificaciones, cámara y galería")
             SeparadorFilas()
             FilaAjuste(Icons.Filled.PrivacyTip, "Mis datos y privacidad", onPrivacidad)
             if (!prestador) {
