@@ -11,6 +11,8 @@ const perfiles = []; // { id, usuario_id }
 const servicios = []; // { id, prestador_id, titulo, ... }
 const calificaciones = []; // { contratante_id, perfil_prestador_id }
 const solicitudes = []; // filas de la tabla solicitudes
+const mensajes = []; // filas de la tabla mensajes
+const codigos = []; // filas de la tabla codigos_recuperacion
 let contador = 0;
 
 function agregarUsuario(email, password, { rol = 'CONTRATANTE' } = {}) {
@@ -124,7 +126,7 @@ async function consulta(sql, parametros = []) {
     }
     const fila = {
       id: p0, servicio_id: p1, perfil_prestador_id: p2, contratante_id: p3, mensaje: p4, estado: 'PENDIENTE', respuesta: null,
-      visto_prestador: false, visto_contratante: true, fecha_creacion: new Date(), fecha_actualizacion: new Date(),
+      visto_prestador: false, visto_contratante: true, whatsapp_compartido: false, fecha_creacion: new Date(), fecha_actualizacion: new Date(),
     };
     solicitudes.push(fila);
     return { rows: [{ ...fila }] };
@@ -135,10 +137,14 @@ async function consulta(sql, parametros = []) {
     return {
       rows: mias
         .map((x) => {
+          const delChat = mensajes.filter((m) => m.solicitud_id === x.id);
+          const ultimo = delChat[delChat.length - 1];
           const otra = enviadas ? porId((perfilPorId(x.perfil_prestador_id) || {}).usuario_id) : porId(x.contratante_id);
           const s = servicios.find((y) => y.id === x.servicio_id);
           return {
             ...x, servicio_titulo: s ? s.titulo : null,
+            mensajes_sin_leer: delChat.filter((m) => m.autor_id !== p1 && !m.leido).length,
+            ultimo_mensaje_texto: ultimo ? ultimo.texto : null, ultimo_mensaje_fecha: ultimo ? ultimo.fecha_creacion : null,
             contraparte_nombre: otra ? otra.nombre : null, contraparte_foto: null, contraparte_telefono: otra ? otra.telefono : null,
           };
         })
@@ -187,6 +193,67 @@ async function consulta(sql, parametros = []) {
     servicios.push(fila);
     return { rows: [{ ...fila }] };
   }
+  // ---------------- chat ----------------
+  if (sql.startsWith('SELECT sol.id, sol.estado, sol.whatsapp_compartido')) {
+    const x = solicitudes.find((y) => y.id === p0);
+    const dueno = x && porId((perfilPorId(x.perfil_prestador_id) || {}).usuario_id);
+    return {
+      rows: x
+        ? [{ id: x.id, estado: x.estado, whatsapp_compartido: x.whatsapp_compartido, contratante_id: x.contratante_id, prestador_usuario_id: dueno && dueno.id, prestador_telefono: dueno && dueno.telefono }]
+        : [],
+    };
+  }
+  if (sql.startsWith('SELECT id, autor_id, texto, tipo, fecha_creacion FROM mensajes')) {
+    let filas = mensajes.filter((m) => m.solicitud_id === p0);
+    if (sql.includes("tipo = 'WHATSAPP'")) return { rows: filas.filter((m) => m.tipo === 'WHATSAPP').slice(0, 1).map((m) => ({ ...m })) };
+    if (p1) filas = filas.filter((m) => m.fecha_creacion > new Date(p1));
+    return { rows: filas.map((m) => ({ ...m })).reverse() };
+  }
+  if (sql.startsWith('UPDATE mensajes SET leido = true')) {
+    mensajes.filter((m) => m.solicitud_id === p0 && m.autor_id !== p1).forEach((m) => { m.leido = true; });
+    return { rows: [] };
+  }
+  if (sql.startsWith('INSERT INTO mensajes')) {
+    const fila = { id: `00000000-0000-4000-b000-${String(++contador).padStart(12, '0')}`, solicitud_id: p0, autor_id: p1, texto: p2, tipo: sql.includes("'WHATSAPP'") ? 'WHATSAPP' : 'TEXTO', leido: false, fecha_creacion: new Date(Date.now() + mensajes.length) };
+    mensajes.push(fila);
+    return { rows: [{ ...fila }] };
+  }
+  if (sql.startsWith('UPDATE solicitudes SET whatsapp_compartido = true')) {
+    solicitudes.find((y) => y.id === p0).whatsapp_compartido = true;
+    return { rows: [] };
+  }
+  if (sql.startsWith('SELECT COUNT(*)::int AS n FROM mensajes')) {
+    const mias = solicitudes.filter((x) => x.contratante_id === p0 || x.perfil_prestador_id === p1).map((x) => x.id);
+    return { rows: [{ n: mensajes.filter((m) => mias.includes(m.solicitud_id) && m.autor_id !== p0 && !m.leido).length }] };
+  }
+  // ---------------- recuperar contrasena ----------------
+  if (sql.startsWith('SELECT id, nombre FROM usuarios WHERE lower(email)')) {
+    const u = usuarios.get(p0);
+    return { rows: u && u.activo ? [{ id: u.id, nombre: u.nombre }] : [] };
+  }
+  if (sql.startsWith('UPDATE codigos_recuperacion SET usado = true WHERE usuario_id')) {
+    codigos.filter((c) => c.usuario_id === p0 && !c.usado).forEach((c) => { c.usado = true; });
+    return { rows: [] };
+  }
+  if (sql.startsWith('INSERT INTO codigos_recuperacion')) {
+    codigos.push({ id: String(++contador), usuario_id: p0, codigo_hash: p1, expira: p2, intentos: 0, usado: false, fecha_creacion: new Date() });
+    return { rows: [] };
+  }
+  if (sql.startsWith('SELECT c.id, c.codigo_hash')) {
+    const u = usuarios.get(p0);
+    const c = u && u.activo ? codigos.filter((x) => x.usuario_id === u.id && !x.usado && x.expira > new Date()).pop() : null;
+    return { rows: c ? [{ ...c }] : [] };
+  }
+  if (sql.startsWith('UPDATE codigos_recuperacion SET intentos = intentos + 1')) {
+    const c = codigos.find((x) => x.id === p0);
+    c.intentos += 1;
+    c.usado = c.intentos >= p1;
+    return { rows: [] };
+  }
+  if (sql.startsWith('UPDATE usuarios SET password_hash = $2')) {
+    porId(p0).password_hash = p1;
+    return { rows: [] };
+  }
   throw new Error('SQL no previsto en las pruebas: ' + sql.slice(0, 70));
 }
 
@@ -204,4 +271,4 @@ async function encender() {
 const { firmarToken } = require('../middleware/auth');
 const tokenDe = (usuario) => firmarToken(usuario);
 
-module.exports = { servicios, encender, agregarUsuario, crearPerfilDe, crearServicioDe, tokenDe };
+module.exports = { servicios, mensajes, codigos, usuarios, encender, agregarUsuario, crearPerfilDe, crearServicioDe, tokenDe };

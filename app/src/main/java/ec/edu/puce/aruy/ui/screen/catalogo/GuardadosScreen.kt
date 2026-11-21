@@ -134,7 +134,7 @@ fun GuardadosScreen(
             if (contactos.isEmpty()) {
                 EstadoVacio(
                     titulo = "Todavía no contactaste a nadie",
-                    texto = "Cuando escribas por WhatsApp a un prestador, aparecerá aquí.",
+                    texto = "Cuando le escribas a un prestador, aparecerá aquí.",
                     icono = Icons.AutoMirrored.Filled.Chat
                 )
             } else {

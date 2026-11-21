@@ -6,12 +6,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import ec.edu.puce.aruy.ui.theme.AruyTheme
 import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.theme.Superposiciones
-import android.content.ActivityNotFoundException
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,7 +31,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -63,6 +58,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -71,7 +69,6 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.ui.components.AvisoHost
-import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.ResumenOpiniones
@@ -82,7 +79,6 @@ import ec.edu.puce.aruy.ui.components.BarraAccionesInferior
 import ec.edu.puce.aruy.ui.components.BotonCircular
 import ec.edu.puce.aruy.ui.components.BotonTonal
 import ec.edu.puce.aruy.ui.components.BotonContorno
-import ec.edu.puce.aruy.ui.components.BotonWhatsApp
 import ec.edu.puce.aruy.ui.components.Calificacion
 import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
@@ -109,6 +105,7 @@ fun DetalleServicioScreen(
     rol: RolNavegacion,
     onVolver: () -> Unit,
     onPrestador: (String) -> Unit,
+    onChat: (String) -> Unit,
     onCuentaRequerida: () -> Unit
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -129,6 +126,13 @@ fun DetalleServicioScreen(
 
     LaunchedEffect(servicioId) { servicioId?.let(actividad::registrarVisto) }
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
+    // Al volver del chat se revisa de nuevo: si la solicitud se canceló o rechazó, el botón vuelve a ser "Solicitar y chatear"
+    val ciclo = LocalLifecycleOwner.current
+    LaunchedEffect(rol, ciclo) {
+        if (rol != RolNavegacion.INVITADO) {
+            ciclo.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.buscarSolicitudActiva() }
+        }
+    }
 
     fun avisar(aviso: Aviso) { alcance.launch { snackbar.avisar(aviso) } }
 
@@ -152,14 +156,21 @@ fun DetalleServicioScreen(
                         )
                     },
                     primario = {
-                        // La acción principal ahora es pedir el servicio dentro de Aruy; WhatsApp queda bajo la tarjeta del prestador
+                        // La acción principal es hablar con el prestador dentro de Aruy: si ya pediste el servicio, se abre ese chat
+                        val chatId = ui.solicitudActivaId
                         BotonRelleno(
-                            "Solicitar",
-                            { if (rol == RolNavegacion.INVITADO) onCuentaRequerida() else hoja = "solicitar" },
+                            if (chatId != null) "Ver chat" else "Solicitar y chatear",
+                            {
+                                when {
+                                    rol == RolNavegacion.INVITADO -> onCuentaRequerida()
+                                    chatId != null -> onChat(chatId)
+                                    else -> hoja = "solicitar"
+                                }
+                            },
                             icono = Icons.AutoMirrored.Filled.Send,
                             grande = true,
                             ancho = true,
-                            habilitado = FiltroCatalogo.disponibleAhora(item)
+                            habilitado = chatId != null || FiltroCatalogo.disponibleAhora(item)
                         )
                     }
                 )
@@ -221,14 +232,6 @@ fun DetalleServicioScreen(
                             )
                         }
                     }
-                    if (Contacto.numeroWhatsApp(item.prestador?.telefono) == null) {
-                        Text(
-                            "El contacto por WhatsApp estará disponible cuando el servidor entregue el teléfono del prestador.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
                     AruyTarjeta(onClick = { onPrestador(item.servicio.prestadorId) }, modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
                             AruyAvatar(item.nombrePrestador, tamano = 56.dp, fotoUrl = item.prestador?.fotoPerfil)
@@ -244,14 +247,6 @@ fun DetalleServicioScreen(
                             }
                         }
                     }
-
-                    BotonWhatsApp(
-                        "Escribir por WhatsApp",
-                        { hoja = "contactar" },
-                        modifier = Modifier.fillMaxWidth(),
-                        icono = Icons.AutoMirrored.Filled.Chat,
-                        habilitado = Contacto.numeroWhatsApp(item.prestador?.telefono) != null
-                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), modifier = Modifier.fillMaxWidth()) {
                         PESTANAS.forEachIndexed { i, titulo ->
@@ -283,36 +278,11 @@ fun DetalleServicioScreen(
                 tituloServicio = item.servicio.titulo,
                 enviando = ui.enviandoSolicitud,
                 onEnviar = { mensaje ->
-                    viewModel.enviarSolicitud(mensaje) {
+                    viewModel.enviarSolicitud(mensaje) { solicitudId ->
                         hoja = null
                         pedirNotificaciones() // "te avisamos cuando responda": ahora sí tiene sentido pedir el permiso
+                        onChat(solicitudId)
                     }
-                },
-                onCerrar = { hoja = null }
-            )
-            "contactar" -> HojaContactar(
-                nombre = item.nombrePrestador,
-                oficio = item.prestador?.oficio,
-                fotoUrl = item.prestador?.fotoPerfil,
-                tituloServicio = item.servicio.titulo,
-                disponible = FiltroCatalogo.disponibleAhora(item),
-                onAbrirWhatsApp = { mensaje ->
-                    val numero = Contacto.numeroWhatsApp(item.prestador?.telefono)
-                    hoja = null
-                    if (numero == null) {
-                        avisar(Aviso.error("Este prestador no tiene un número de WhatsApp válido."))
-                    } else if (abrirWhatsApp(contexto, numero, mensaje)) {
-                        actividad.registrarContacto(item.servicio.prestadorId, item.id, item.nombrePrestador, mensaje)
-                        avisar(Aviso.exito("Abrimos WhatsApp con tu mensaje. Quedó en tu historial."))
-                    } else {
-                        avisar(Aviso.error("No pudimos abrir WhatsApp en este teléfono."))
-                    }
-                },
-                onCopiar = { mensaje ->
-                    (contexto.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                        .setPrimaryClip(ClipData.newPlainText("Mensaje para ${item.nombrePrestador}", mensaje))
-                    hoja = null
-                    avisar(Aviso.exito("Mensaje copiado"))
                 },
                 onCerrar = { hoja = null }
             )
@@ -357,16 +327,6 @@ fun DetalleServicioScreen(
     fotoAbierta?.let { inicial ->
         VisorDeFotos(ui.fotos, inicial, onCerrar = { fotoAbierta = null })
     }
-}
-
-private fun abrirWhatsApp(contexto: Context, numero: String, mensaje: String): Boolean = try {
-    contexto.startActivity(
-        Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$numero?text=${Uri.encode(mensaje)}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    )
-    true
-} catch (e: ActivityNotFoundException) {
-    false
 }
 
 private fun compartir(contexto: Context, titulo: String) {

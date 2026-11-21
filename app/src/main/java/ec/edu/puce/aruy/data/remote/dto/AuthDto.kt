@@ -32,6 +32,18 @@ data class ActivarPerfilRequest(
     @SerializedName("anios_experiencia") val aniosExperiencia: Int? = null
 )
 
+/** Cuerpo de `POST /auth/olvide`: el servidor siempre responde 200 con un mensaje, exista o no el correo. */
+data class OlvideRequest(@SerializedName("email") val email: String)
+
+/** Cuerpo de `POST /auth/restablecer`: el código de 6 dígitos que llegó al correo y la contraseña nueva. */
+data class RestablecerRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("codigo") val codigo: String,
+    @SerializedName("password") val password: String
+)
+
+data class MensajeServidorDto(@SerializedName("mensaje") val mensaje: String? = null)
+
 /** Respuesta de /auth/login, /auth/registro y /perfiles/activar. */
 data class AuthRespuestaDto(
     @SerializedName("token") val token: String,

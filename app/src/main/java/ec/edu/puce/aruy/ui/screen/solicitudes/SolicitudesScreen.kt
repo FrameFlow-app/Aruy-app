@@ -1,9 +1,5 @@
 package ec.edu.puce.aruy.ui.screen.solicitudes
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -32,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import ec.edu.puce.aruy.ui.theme.Espacios
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ec.edu.puce.aruy.domain.catalogo.Contacto
@@ -50,6 +48,7 @@ import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.ui.components.BarraSuperior
 import ec.edu.puce.aruy.ui.components.BotonContorno
 import ec.edu.puce.aruy.ui.components.BotonRelleno
+import ec.edu.puce.aruy.ui.components.BotonTonal
 import ec.edu.puce.aruy.ui.components.BotonTexto
 import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
@@ -59,6 +58,7 @@ import ec.edu.puce.aruy.ui.components.TipoPastilla
 import ec.edu.puce.aruy.ui.components.avisar
 import ec.edu.puce.aruy.ui.components.rememberPedirNotificaciones
 import ec.edu.puce.aruy.ui.viewmodel.SolicitudesViewModel
+import ec.edu.puce.aruy.util.abrirWhatsApp
 import kotlinx.coroutines.launch
 
 /** Un cambio de estado que está esperando confirmación o un mensaje para la otra persona. */
@@ -66,13 +66,13 @@ private data class CambioPendiente(val solicitud: Solicitud, val nuevo: EstadoSo
 
 /**
  * "Mis solicitudes": lo que pediste y, si ofreces servicios, lo que te pidieron. El prestador acepta o rechaza;
- * quien pidió puede cancelar. Al aceptar, se comparte el teléfono para seguir por WhatsApp.
+ * quien pidió puede cancelar. Cada tarjeta abre el chat; el WhatsApp solo se comparte si el prestador lo decide.
  */
 @Composable
 fun SolicitudesScreen(
     viewModel: SolicitudesViewModel,
     onVolver: () -> Unit,
-    onVerServicio: (String) -> Unit
+    onChat: (String) -> Unit
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -127,7 +127,7 @@ fun SolicitudesScreen(
                     texto = if (ui.tipo == TipoSolicitudes.RECIBIDAS) {
                         "Cuando alguien pida uno de tus servicios, aparece aquí y te avisamos."
                     } else {
-                        "Entra a un servicio y toca «Enviar solicitud en Aruy». Aquí verás qué te responden."
+                        "Entra a un servicio y toca «Solicitar y chatear». Aquí verás qué te responden."
                     },
                     icono = Icons.Filled.Inbox,
                     textoBoton = "Actualizar",
@@ -143,7 +143,7 @@ fun SolicitudesScreen(
                             tipo = ui.tipo,
                             trabajando = ui.trabajandoId == solicitud.id,
                             ocupado = ui.trabajandoId != null,
-                            onAbrirServicio = { solicitud.servicioId?.let(onVerServicio) },
+                            onAbrirChat = { onChat(solicitud.id) },
                             onCambiar = { nuevo -> cambio = CambioPendiente(solicitud, nuevo) },
                             onEscribir = { escribir(solicitud) }
                         )
@@ -193,12 +193,12 @@ private fun TarjetaSolicitud(
     tipo: TipoSolicitudes,
     trabajando: Boolean,
     ocupado: Boolean,
-    onAbrirServicio: () -> Unit,
+    onAbrirChat: () -> Unit,
     onCambiar: (EstadoSolicitud) -> Unit,
     onEscribir: () -> Unit
 ) {
     val acciones = solicitud.accionesPara(tipo)
-    AruyTarjeta(modifier = Modifier.fillMaxWidth(), onClick = if (solicitud.servicioId != null) onAbrirServicio else null) {
+    AruyTarjeta(modifier = Modifier.fillMaxWidth(), onClick = onAbrirChat) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
             AruyAvatar(solicitud.contraparte.nombre, fotoUrl = solicitud.contraparte.fotoPerfil)
             Column(Modifier.weight(1f)) {
@@ -212,6 +212,12 @@ private fun TarjetaSolicitud(
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Espacios.xs)) {
                 Pastilla(solicitud.estado.etiqueta, tipo = tipoDePastilla(solicitud.estado))
                 if (solicitud.sinVer) Pastilla("Nuevo", tipo = TipoPastilla.ROSA)
+                if (solicitud.mensajesSinLeer > 0) {
+                    Pastilla(
+                        if (solicitud.mensajesSinLeer == 1) "1 mensaje" else "${solicitud.mensajesSinLeer} mensajes",
+                        tipo = TipoPastilla.ERROR
+                    )
+                }
             }
         }
         Text(solicitud.mensaje, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Espacios.s))
@@ -230,7 +236,22 @@ private fun TarjetaSolicitud(
             modifier = Modifier.padding(top = Espacios.xs)
         )
 
-        if (solicitud.estado == EstadoSolicitud.ACEPTADA && solicitud.contraparte.telefono != null) {
+        solicitud.ultimoMensaje?.let { ultimo ->
+            Text(
+                "Último mensaje: ${ultimo.texto}",
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = if (solicitud.mensajesSinLeer > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Espacios.xs)
+            )
+        }
+
+        BotonTonal(
+            "Abrir chat", onAbrirChat,
+            icono = Icons.AutoMirrored.Filled.Send, ancho = true, modifier = Modifier.padding(top = Espacios.s)
+        )
+        if (solicitud.whatsappCompartido && Contacto.numeroWhatsApp(solicitud.contraparte.telefono) != null) {
             BotonContorno(
                 "Escribir por WhatsApp", onEscribir,
                 icono = Icons.AutoMirrored.Filled.Chat, ancho = true, modifier = Modifier.padding(top = Espacios.s)
@@ -259,7 +280,7 @@ private fun HojaRespuesta(aceptar: Boolean, nombre: String, onConfirmar: (String
     AruyHoja(if (aceptar) "Aceptar la solicitud" else "Rechazar la solicitud", onCerrar) {
         Text(
             if (aceptar) {
-                "$nombre verá tu respuesta y podrá escribirte por WhatsApp: al aceptar se comparte tu número."
+                "$nombre verá tu respuesta y podrán seguir hablando por el chat. Tu WhatsApp solo se comparte si tú lo decides."
             } else {
                 "$nombre verá que no puedes ahora. Puedes explicarle por qué (es opcional)."
             },
@@ -298,14 +319,4 @@ private fun textoDeAccion(estado: EstadoSolicitud): String = when (estado) {
     EstadoSolicitud.COMPLETADA -> "Completada"
     EstadoSolicitud.CANCELADA -> "Cancelar"
     EstadoSolicitud.PENDIENTE -> "Pendiente"
-}
-
-private fun abrirWhatsApp(contexto: Context, numero: String, mensaje: String): Boolean = try {
-    contexto.startActivity(
-        Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$numero?text=${Uri.encode(mensaje)}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    )
-    true
-} catch (e: ActivityNotFoundException) {
-    false
 }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -45,54 +44,7 @@ import ec.edu.puce.aruy.ui.components.BotonTonal
 import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.BotonTexto
-import ec.edu.puce.aruy.ui.components.BotonWhatsApp
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
-
-/** "Contactar a {nombre}": mensaje editable y envío por WhatsApp (`flows.js`). */
-@Composable
-fun HojaContactar(
-    nombre: String,
-    oficio: String?,
-    tituloServicio: String?,
-    disponible: Boolean,
-    onAbrirWhatsApp: (mensaje: String) -> Unit,
-    onCopiar: (mensaje: String) -> Unit,
-    onCerrar: () -> Unit,
-    fotoUrl: String? = null
-) {
-    var mensaje by rememberSaveable { mutableStateOf(Contacto.mensajePorDefecto(nombre, tituloServicio)) }
-    AruyHoja("Contactar a $nombre", onCerrar) {
-        AruyTarjeta(modifier = Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
-                AruyAvatar(nombre, tamano = 56.dp, fotoUrl = fotoUrl)
-                Column {
-                    Text(nombre, style = MaterialTheme.typography.titleMedium)
-                    if (!oficio.isNullOrBlank()) Text(oficio, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (!tituloServicio.isNullOrBlank()) Text(tituloServicio, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-        if (!disponible) {
-            AruyTarjeta(tipo = TipoTarjeta.ADVERTENCIA, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "$nombre no está recibiendo solicitudes ahora. Puedes dejarle tu mensaje y te responderá cuando vuelva.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-        AruyCampo(
-            valor = mensaje,
-            onValor = { mensaje = it },
-            etiqueta = "Tu mensaje",
-            unaLinea = false,
-            lineasMin = 4,
-            maxCaracteres = 400
-        )
-        BotonWhatsApp("Abrir WhatsApp", { onAbrirWhatsApp(mensaje.trim()) }, icono = Icons.AutoMirrored.Filled.Chat, habilitado = mensaje.isNotBlank())
-        BotonTonal("Copiar mensaje", { onCopiar(mensaje.trim()) }, icono = Icons.Filled.ContentCopy, ancho = true, habilitado = mensaje.isNotBlank())
-        BotonTexto("Ahora no", onCerrar)
-    }
-}
 
 /** "¿Cómo te fue con {nombre}?": 1 a 5 estrellas y comentario opcional. */
 @Composable

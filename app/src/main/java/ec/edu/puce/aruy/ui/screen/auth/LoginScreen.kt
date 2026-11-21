@@ -48,7 +48,8 @@ import ec.edu.puce.aruy.ui.viewmodel.AuthViewModel
 fun LoginScreen(
     viewModel: AuthViewModel,
     onVolver: () -> Unit,
-    onCrearCuenta: () -> Unit
+    onCrearCuenta: () -> Unit,
+    onOlvide: () -> Unit
 ) {
     val formulario by viewModel.formulario.collectAsStateWithLifecycle()
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
@@ -119,6 +120,12 @@ fun LoginScreen(
                         )
                     }
                 }
+            )
+
+            BotonTexto(
+                "¿Olvidaste tu contraseña?",
+                onOlvide,
+                modifier = Modifier.align(Alignment.End)
             )
 
             formulario.error?.let { mensaje ->

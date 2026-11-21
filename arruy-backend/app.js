@@ -87,7 +87,30 @@ const limiteImagenes = rateLimit({
 });
 
 app.get('/health', (req, res) => res.json({ estado: 'ok' }));
+// Recuperar contrasena: pocas peticiones de codigo por hora (evita llenar un correo ajeno) y de intentos de canje
+const unaHora = { windowMs: 60 * 60 * 1000, standardHeaders: 'draft-7', legacyHeaders: false };
+const limiteOlvideIp = rateLimit({
+  ...unaHora,
+  limit: 3,
+  keyGenerator: (req) => porIp(req),
+  message: { error: 'Pediste muchos codigos desde esta red. Intenta de nuevo en una hora.' },
+});
+const limiteOlvideCorreo = rateLimit({
+  ...unaHora,
+  limit: 3,
+  keyGenerator: (req) => `correo:${correoDe(req)}`,
+  message: { error: 'Pediste muchos codigos para ese correo. Intenta de nuevo en una hora.' },
+});
+const limiteRestablecer = rateLimit({
+  ...unaHora,
+  limit: 10,
+  keyGenerator: (req) => porIp(req),
+  message: { error: 'Demasiados intentos desde esta red. Intenta de nuevo en una hora.' },
+});
+
 app.post('/auth/login', limiteLoginCuenta, limiteAuthPorIp);
+app.post('/auth/olvide', limiteOlvideIp, limiteOlvideCorreo, limiteAuthPorIp);
+app.post('/auth/restablecer', limiteRestablecer, limiteAuthPorIp);
 app.post('/auth/registro', limiteRegistro, limiteAuthPorIp);
 app.use('/auth', require('./routes/auth'));
 // Enviar solicitudes: no mas de 30 por hora por persona (evita llenar de mensajes a un prestador)
@@ -101,7 +124,18 @@ const limiteSolicitudes = rateLimit({
 });
 
 app.post('/servicios/:id/fotos', limiteImagenes);
+// Chat: 60 mensajes cada 10 minutos por persona
+const limiteMensajes = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  limit: 60,
+  keyGenerator: (req) => quien(req),
+  message: { error: 'Estas enviando muchos mensajes seguidos. Espera unos minutos.' },
+});
+
 app.post('/solicitudes', limiteSolicitudes);
+app.post('/solicitudes/:id/mensajes', limiteMensajes);
 app.post('/usuarios/yo/foto', limiteImagenes);
 app.use('/servicios', require('./routes/servicios'));
 app.use('/usuarios', require('./routes/usuarios'));
@@ -109,6 +143,7 @@ app.use('/perfiles', require('./routes/perfiles'));
 app.use('/fotos', require('./routes/fotos'));
 app.use('/calificaciones', require('./routes/calificaciones'));
 app.use('/suscripciones', require('./routes/suscripciones'));
+app.use('/solicitudes', require('./routes/mensajes'));
 app.use('/solicitudes', require('./routes/solicitudes'));
 
 // Documentación interactiva (Swagger) en /docs

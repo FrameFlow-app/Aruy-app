@@ -10,6 +10,7 @@ import ec.edu.puce.aruy.domain.model.EstadoSolicitud
 import ec.edu.puce.aruy.domain.model.ResumenSolicitudes
 import ec.edu.puce.aruy.domain.model.Solicitud
 import ec.edu.puce.aruy.domain.model.TipoSolicitudes
+import ec.edu.puce.aruy.domain.model.UltimoMensaje
 import ec.edu.puce.aruy.domain.repository.SolicitudRepository
 
 class SolicitudRepositoryImpl(private val api: SolicitudApi) : SolicitudRepository {
@@ -24,7 +25,7 @@ class SolicitudRepositoryImpl(private val api: SolicitudApi) : SolicitudReposito
         api.cambiarEstado(id, CambiarEstadoSolicitudRequest(estado.name, respuesta)).toDomain()
 
     override suspend fun resumen(): ResumenSolicitudes =
-        api.resumen().let { ResumenSolicitudes(it.recibidasNuevas, it.recibidasPendientes, it.enviadasNovedades) }
+        api.resumen().let { ResumenSolicitudes(it.recibidasNuevas, it.recibidasPendientes, it.enviadasNovedades, it.mensajesSinLeer) }
 
     override suspend fun marcarVistas(tipo: TipoSolicitudes) {
         api.marcarVistas(MarcarVistasRequest(tipo.valor))
@@ -44,6 +45,9 @@ class SolicitudRepositoryImpl(private val api: SolicitudApi) : SolicitudReposito
             nombre = contraparte?.nombre ?: "Cuenta eliminada",
             fotoPerfil = contraparte?.fotoPerfil,
             telefono = contraparte?.telefono
-        )
+        ),
+        whatsappCompartido = whatsappCompartido,
+        mensajesSinLeer = mensajesSinLeer,
+        ultimoMensaje = ultimoMensaje?.texto?.takeIf { it.isNotBlank() }?.let { UltimoMensaje(it, ultimoMensaje.fecha) }
     )
 }

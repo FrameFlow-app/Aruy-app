@@ -31,11 +31,11 @@ class SolicitudesWorker(contexto: Context, parametros: WorkerParameters) : Corou
             return Result.retry()
         }
 
-        val (ultimasRecibidas, ultimasEnviadas) = c.avisosSolicitudesStore.leer()
+        val (ultimasRecibidas, ultimasEnviadas, ultimosMensajes) = c.avisosSolicitudesStore.leer()
         if (!c.notificadorSolicitudes.enPrimerPlano()) {
-            PoliticaAvisos.textos(resumen, ultimasRecibidas, ultimasEnviadas).forEach(c.notificadorSolicitudes::mostrar)
+            PoliticaAvisos.textos(resumen, ultimasRecibidas, ultimasEnviadas, ultimosMensajes).forEach(c.notificadorSolicitudes::mostrar)
         }
-        c.avisosSolicitudesStore.guardar(resumen.recibidasNuevas, resumen.enviadasNovedades)
+        c.avisosSolicitudesStore.guardar(resumen.recibidasNuevas, resumen.enviadasNovedades, resumen.mensajesSinLeer)
         return Result.success()
     }
 

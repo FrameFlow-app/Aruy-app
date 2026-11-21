@@ -8,6 +8,12 @@
     <!-- Para avisar cuando te piden un servicio o responden tu solicitud (se pide cuando sirve de algo, no al abrir la app) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Para abrir WhatsApp (normal o Business) desde el chat: Android 11+ exige declarar qué apps se consultan -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:name=".AruyApplication"
         android:allowBackup="true"

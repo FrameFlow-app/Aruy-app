@@ -6,6 +6,7 @@ const { registrarError } = require('../registro');
 const { firmarToken, exigirToken } = require('../middleware/auth');
 const { edadEnAnios, EDAD_MINIMA, textoValido, esEmail, passwordValida, ROLES } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
+const correo = require('../correo');
 
 const router = express.Router();
 
@@ -182,6 +183,75 @@ router.post('/renovar', exigirToken, async (req, res) => {
   } catch (e) {
     registrarError(e);
     res.status(500).json({ error: 'Error al renovar la sesion' });
+  }
+});
+
+// Olvide mi contrasena: se envia un codigo de 6 digitos al correo. La respuesta es siempre la misma,
+// exista o no la cuenta, para no revelar quien esta registrado.
+const MENSAJE_OLVIDE = 'Si el correo está registrado, te enviamos un código.';
+const CODIGO_VIGENCIA_MS = 15 * 60 * 1000;
+const CODIGO_MAX_INTENTOS = 5;
+const CODIGO_INVALIDO = 'El código no es válido o ya expiró.';
+
+router.post('/olvide', async (req, res) => {
+  const { email } = req.body || {};
+  if (esEmail(email)) {
+    try {
+      const correoUsuario = email.trim().toLowerCase();
+      const r = await pool.query('SELECT id, nombre FROM usuarios WHERE lower(email) = $1 AND activo = true', [correoUsuario]);
+      const u = r.rows[0];
+      if (u) {
+        const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+        const hash = await bcrypt.hash(codigo, 10);
+        await pool.query('UPDATE codigos_recuperacion SET usado = true WHERE usuario_id = $1 AND usado = false', [u.id]);
+        await pool.query('INSERT INTO codigos_recuperacion (usuario_id, codigo_hash, expira) VALUES ($1, $2, $3)', [
+          u.id,
+          hash,
+          new Date(Date.now() + CODIGO_VIGENCIA_MS),
+        ]);
+        // Sin esperar: si el envio falla solo se anota, la respuesta es la misma
+        Promise.resolve(correo.enviarCodigo(correoUsuario, codigo)).catch(registrarError);
+      }
+    } catch (e) {
+      registrarError(e);
+    }
+  }
+  res.json({ mensaje: MENSAJE_OLVIDE });
+});
+
+router.post('/restablecer', async (req, res) => {
+  const { email, codigo, password } = req.body || {};
+  if (!esEmail(email) || typeof codigo !== 'string' || !/^\d{6}$/.test(codigo.trim())) {
+    return res.status(400).json({ error: CODIGO_INVALIDO });
+  }
+  try {
+    const r = await pool.query(
+      `SELECT c.id, c.codigo_hash, c.intentos, c.usuario_id
+       FROM codigos_recuperacion c JOIN usuarios u ON u.id = c.usuario_id
+       WHERE lower(u.email) = $1 AND u.activo = true AND c.usado = false AND c.expira > NOW()
+       ORDER BY c.fecha_creacion DESC LIMIT 1`,
+      [email.trim().toLowerCase()]
+    );
+    const c = r.rows[0];
+    if (!c) return res.status(400).json({ error: CODIGO_INVALIDO });
+    const coincide = await bcrypt.compare(codigo.trim(), c.codigo_hash).catch(() => false);
+    if (!coincide) {
+      await pool.query('UPDATE codigos_recuperacion SET intentos = intentos + 1, usado = (intentos + 1 >= $2) WHERE id = $1', [
+        c.id,
+        CODIGO_MAX_INTENTOS,
+      ]);
+      return res.status(400).json({ error: CODIGO_INVALIDO });
+    }
+    if (!passwordValida(password)) {
+      return res.status(400).json({ error: 'password debe tener al menos 8 caracteres' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE usuarios SET password_hash = $2 WHERE id = $1', [c.usuario_id, hash]);
+    await pool.query('UPDATE codigos_recuperacion SET usado = true WHERE usuario_id = $1 AND usado = false', [c.usuario_id]);
+    res.json({ mensaje: 'Contraseña actualizada' });
+  } catch (e) {
+    registrarError(e);
+    res.status(500).json({ error: 'Error al restablecer la contraseña' });
   }
 });
 

@@ -91,7 +91,7 @@ test('el prestador ve la solicitud recibida, sin el telefono del cliente hasta a
   assert.equal((await e.comoCliente('GET', '/solicitudes?tipo=recibidas')).cuerpo.length, 0, 'quien no es prestador no recibe nada');
 });
 
-test('al aceptar, el cliente ve la respuesta y el prestador ve el telefono del cliente', async (t) => {
+test('al aceptar, el cliente ve la respuesta (sin telefono) y el prestador ve el telefono del cliente', async (t) => {
   const e = await escenario(t);
   const { cuerpo: creada } = await enviar(e);
   const ok = await e.comoPrestador('PATCH', `/solicitudes/${creada.id}`, { estado: 'ACEPTADA', respuesta: 'Puedo el sabado a las 9' });
@@ -101,7 +101,7 @@ test('al aceptar, el cliente ve la respuesta y el prestador ve el telefono del c
   assert.equal(delCliente.estado, 'ACEPTADA');
   assert.equal(delCliente.respuesta, 'Puedo el sabado a las 9');
   assert.equal(delCliente.sin_ver, true, 'el cliente debe enterarse');
-  assert.equal(delCliente.contraparte.telefono, '0990000001');
+  assert.equal(delCliente.contraparte.telefono, null, 'el telefono del prestador llega solo cuando comparte su WhatsApp');
   const delPrestador = (await e.comoPrestador('GET', '/solicitudes?tipo=recibidas')).cuerpo[0];
   assert.equal(delPrestador.contraparte.telefono, '0990000002');
   assert.equal(delPrestador.sin_ver, false);
@@ -140,7 +140,7 @@ test('el resumen cuenta lo nuevo y al abrir la bandeja se marca como visto', asy
   const e = await escenario(t);
   const { cuerpo: creada } = await enviar(e);
   assert.deepEqual((await e.comoPrestador('GET', '/solicitudes/resumen')).cuerpo, {
-    recibidas_nuevas: 1, recibidas_pendientes: 1, enviadas_novedades: 0,
+    recibidas_nuevas: 1, recibidas_pendientes: 1, enviadas_novedades: 0, mensajes_sin_leer: 0,
   });
   assert.equal((await e.comoPrestador('POST', '/solicitudes/vistas', { tipo: 'recibidas' })).cuerpo.marcadas, 1);
   assert.equal((await e.comoPrestador('GET', '/solicitudes/resumen')).cuerpo.recibidas_nuevas, 0);

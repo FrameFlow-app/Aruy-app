@@ -126,7 +126,7 @@ class SolicitudesViewModel(
 
     companion object {
         fun mensajeDeExito(estado: EstadoSolicitud): String = when (estado) {
-            EstadoSolicitud.ACEPTADA -> "Aceptaste la solicitud. Ya puedes escribirle por WhatsApp."
+            EstadoSolicitud.ACEPTADA -> "Aceptaste la solicitud. Ya pueden hablar por el chat."
             EstadoSolicitud.RECHAZADA -> "Rechazaste la solicitud."
             EstadoSolicitud.COMPLETADA -> "Marcaste el trabajo como completado."
             EstadoSolicitud.CANCELADA -> "Cancelaste la solicitud."
