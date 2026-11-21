@@ -7,45 +7,37 @@ import ec.edu.puce.aruy.data.mapper.toDomain
 import ec.edu.puce.aruy.data.remote.api.PrestadorApi
 import ec.edu.puce.aruy.data.remote.api.ServicioApi
 import ec.edu.puce.aruy.data.remote.dto.CrearServicioRequest
-import ec.edu.puce.aruy.domain.model.CategoriaServicio
+import ec.edu.puce.aruy.domain.model.DatosServicio
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.Servicio
+import ec.edu.puce.aruy.domain.repository.PrestadorRepository
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/** Datos del formulario de un servicio, listos para enviar. */
-data class DatosServicio(
-    val titulo: String,
-    val descripcion: String,
-    val categoria: CategoriaServicio,
-    val precio: Double?,
-    val disponible: Boolean
-)
-
 /** Servicios y fotos del propio prestador (PR #17 del backend). */
-class PrestadorRepository(
+class PrestadorRepositoryImpl(
     private val api: PrestadorApi,
     private val servicioApi: ServicioApi
-) {
+) : PrestadorRepository {
 
     /** Disponibilidad del perfil: `true` = "Recibiendo solicitudes". */
-    suspend fun disponibilidad(): Boolean = api.miPerfil().disponible
+    override suspend fun disponibilidad(): Boolean = api.miPerfil().disponible
 
-    suspend fun cambiarDisponibilidad(disponible: Boolean): Boolean {
+    override suspend fun cambiarDisponibilidad(disponible: Boolean): Boolean {
         val cuerpo = JsonObject().apply { addProperty("disponible", disponible) }
         return api.editarMiPerfil(comoJson(cuerpo)).disponible
     }
 
-    suspend fun misServicios(perfilId: String): List<Servicio> =
+    override suspend fun misServicios(perfilId: String): List<Servicio> =
         servicioApi.obtenerServiciosPorPrestador(perfilId).map { it.toDomain() }
 
-    suspend fun servicio(id: String): Servicio = servicioApi.obtenerServicioPorId(id).toDomain()
+    override suspend fun servicio(id: String): Servicio = servicioApi.obtenerServicioPorId(id).toDomain()
 
-    suspend fun fotosDe(servicioId: String): List<FotoPortafolio> =
+    override suspend fun fotosDe(servicioId: String): List<FotoPortafolio> =
         servicioApi.obtenerFotos(servicioId).map { it.toDomain(servicioId) }.sortedBy { it.orden }
 
-    suspend fun crear(datos: DatosServicio): Servicio =
+    override suspend fun crear(datos: DatosServicio): Servicio =
         api.crearServicio(
             CrearServicioRequest(
                 titulo = datos.titulo.trim(),
@@ -56,25 +48,27 @@ class PrestadorRepository(
             )
         ).toDomain()
 
-    suspend fun editar(id: String, datos: DatosServicio): Servicio =
+    override suspend fun editar(id: String, datos: DatosServicio): Servicio =
         api.editarServicio(id, comoJson(cuerpoDeEdicion(datos))).toDomain()
 
-    suspend fun cambiarDisponibilidadDelServicio(id: String, disponible: Boolean): Servicio {
+    override suspend fun cambiarDisponibilidadDelServicio(id: String, disponible: Boolean): Servicio {
         val cuerpo = JsonObject().apply { addProperty("disponible", disponible) }
         return api.editarServicio(id, comoJson(cuerpo)).toDomain()
     }
 
-    suspend fun eliminar(id: String) = api.eliminarServicio(id)
+    override suspend fun eliminar(id: String) {
+        api.eliminarServicio(id)
+    }
 
     /**
      * Sube una foto ya convertida a WebP. El servidor vuelve a comprobar el formato real, las
      * dimensiones y los 500 KB, y guarda en Neon solo la ruta del archivo en Supabase Storage.
      */
-    suspend fun subirFoto(
+    override suspend fun subirFoto(
         servicioId: String,
         webp: ByteArray,
-        etiquetas: List<String> = emptyList(),
-        descripcion: String? = null
+        etiquetas: List<String>,
+        descripcion: String?
     ): FotoPortafolio {
         val foto = api.subirFoto(
             servicioId = servicioId,
@@ -93,11 +87,12 @@ class PrestadorRepository(
         )
     }
 
-    suspend fun eliminarFoto(fotoId: String) = api.eliminarFoto(fotoId)
+    override suspend fun eliminarFoto(fotoId: String) {
+        api.eliminarFoto(fotoId)
+    }
 
     companion object {
         const val TIPO_WEBP = "image/webp"
-        const val MAX_FOTOS_POR_SERVICIO = 3
         private const val MAX_ETIQUETAS = 20
         private const val MAX_LARGO_ETIQUETA = 50
 

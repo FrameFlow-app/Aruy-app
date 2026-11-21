@@ -27,13 +27,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +57,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
@@ -74,7 +74,7 @@ import ec.edu.puce.aruy.ui.components.DialogoConfirmacion
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
 import ec.edu.puce.aruy.ui.components.Pastilla
-import ec.edu.puce.aruy.data.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.repository.PrestadorRepository
 import ec.edu.puce.aruy.ui.components.TipoTarjeta
 import ec.edu.puce.aruy.ui.components.avisar
 import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
@@ -90,7 +90,7 @@ fun EditorServicioScreen(
     onVolver: () -> Unit,
     onGuardado: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var hojaFoto by rememberSaveable { mutableStateOf(false) }
     var fotoPorQuitar by remember { mutableStateOf<FotoPortafolio?>(null) }
@@ -200,7 +200,7 @@ fun EditorServicioScreen(
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 
     if (hojaFoto) HojaAgregarFoto(acciones, onCerrar = { hojaFoto = false })
@@ -239,7 +239,7 @@ private fun SeccionFotos(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacios.m)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Fotos de tu trabajo", style = MaterialTheme.typography.titleMedium)
+            Text("Fotos de tu trabajo (mínimo 1)", style = MaterialTheme.typography.titleMedium)
             Pastilla("${ui.totalFotos} de ${PrestadorRepository.MAX_FOTOS_POR_SERVICIO}")
         }
         Row(
@@ -297,6 +297,7 @@ private fun SeccionFotos(
                 }
             }
         }
+        ui.errorFotos?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error) }
         Text(
             "Aruy analiza cada foto en tu teléfono y te sugiere una categoría. Se envían en WebP, de máximo 1280 px y 500 KB.",
             style = MaterialTheme.typography.bodyMedium,

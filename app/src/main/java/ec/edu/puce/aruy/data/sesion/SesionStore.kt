@@ -11,6 +11,7 @@ import ec.edu.puce.aruy.domain.model.EstadoVerificacion
 import ec.edu.puce.aruy.domain.model.RolUsuario
 import ec.edu.puce.aruy.domain.model.Sesion
 import ec.edu.puce.aruy.domain.model.Usuario
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 private val Context.almacenSesion: DataStore<Preferences> by preferencesDataStore(name = "sesion")
@@ -20,6 +21,9 @@ interface AlmacenSesion {
     suspend fun leer(): Sesion?
     suspend fun guardar(sesion: Sesion)
     suspend fun borrar()
+
+    /** Por qué la última lectura devolvió null estando la sesión guardada (null = simplemente no había sesión). */
+    fun motivoDelUltimoFallo(): String? = null
 }
 
 /** Guarda la sesión en DataStore. El token va cifrado con el Keystore; los datos del usuario no son secretos. */
@@ -29,6 +33,11 @@ class SesionStore(
 ) : AlmacenSesion {
 
     private val gson = Gson()
+
+    @Volatile
+    private var ultimoMotivo: String? = null
+    override fun motivoDelUltimoFallo(): String? = ultimoMotivo
+
     private val claveToken = stringPreferencesKey("token_cifrado")
     private val claveUsuario = stringPreferencesKey("usuario")
     private val clavePerfil = stringPreferencesKey("perfil_prestador_id")
@@ -43,19 +52,29 @@ class SesionStore(
     )
 
     override suspend fun leer(): Sesion? {
+        ultimoMotivo = null
         val p = contexto.almacenSesion.data.first()
         val cifrado = p[claveToken]
         if (cifrado == null) {
             RegistroSesion.info("No hay sesion guardada (primer uso o se cerro la sesion)")
             return null
         }
-        val token = cifrador.descifrar(cifrado)
+        // Al abrir la app el Keystore del teléfono a veces tarda en responder: se reintenta antes de rendirse
+        var token = cifrador.descifrar(cifrado)
+        var intento = 1
+        while (token == null && intento < INTENTOS_DE_LECTURA) {
+            delay(ESPERA_ENTRE_INTENTOS_MS)
+            token = cifrador.descifrar(cifrado)
+            intento++
+        }
         if (token == null) {
-            RegistroSesion.aviso("Hay una sesion guardada pero NO se pudo descifrar el token (clave del Keystore invalida o datos restaurados)")
+            ultimoMotivo = "la clave de seguridad del teléfono no pudo abrir tu sesión guardada"
+            RegistroSesion.aviso("Hay una sesion guardada pero NO se pudo descifrar el token tras $intento intentos (clave del Keystore invalida o datos restaurados)")
             return null
         }
         val u = runCatching { gson.fromJson(p[claveUsuario], UsuarioGuardado::class.java) }.getOrNull()
         if (u == null) {
+            ultimoMotivo = "los datos guardados de tu cuenta estaban dañados"
             RegistroSesion.aviso("Hay token guardado pero los datos del usuario no se pudieron leer")
             return null
         }
@@ -88,5 +107,10 @@ class SesionStore(
 
     override suspend fun borrar() {
         contexto.almacenSesion.edit { it.clear() }
+    }
+
+    private companion object {
+        const val INTENTOS_DE_LECTURA = 3
+        const val ESPERA_ENTRE_INTENTOS_MS = 300L
     }
 }

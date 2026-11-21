@@ -25,7 +25,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,9 +57,9 @@ fun GuardadosScreen(
     onServicio: (String) -> Unit,
     onBuscar: () -> Unit
 ) {
-    val estado by catalogo.catalogo.collectAsState()
-    val favoritosIds by actividad.favoritosIds.collectAsState()
-    val contactos by actividad.contactos.collectAsState()
+    val estado by catalogo.catalogo.collectAsStateWithLifecycle()
+    val favoritosIds by actividad.favoritosIds.collectAsStateWithLifecycle()
+    val contactos by actividad.contactos.collectAsStateWithLifecycle()
     var pestana by rememberSaveable { mutableStateOf(0) }
     var confirmarBorrado by rememberSaveable { mutableStateOf(false) }
 

@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,7 +34,7 @@ import ec.edu.puce.aruy.ui.viewmodel.ActividadLocalViewModel
 /** Personas bloqueadas (`bloqueados` en `ajustes.js`): no se ven sus servicios ni su perfil. */
 @Composable
 fun BloqueadosScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit) {
-    val bloqueados by actividad.bloqueados.collectAsState()
+    val bloqueados by actividad.bloqueados.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         BarraSuperior("Personas bloqueadas", onVolver)
         if (bloqueados.isEmpty()) {
@@ -74,7 +74,7 @@ fun BloqueadosScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit) {
 /** Mis reportes. Por ahora solo se guardan en el teléfono: el backend todavía no recibe reportes. */
 @Composable
 fun MisReportesScreen(actividad: ActividadLocalViewModel, onVolver: () -> Unit, onVerNormas: () -> Unit) {
-    val reportes by actividad.reportes.collectAsState()
+    val reportes by actividad.reportes.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         BarraSuperior("Mis reportes", onVolver)
         if (reportes.isEmpty()) {

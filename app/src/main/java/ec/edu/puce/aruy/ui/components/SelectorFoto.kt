@@ -108,10 +108,15 @@ fun HojaFotoPerfil(acciones: AccionesFoto, onCerrar: () -> Unit) {
 
 /** "Agregar foto": tomar una foto o elegirla de la galería. */
 @Composable
-fun HojaAgregarFoto(acciones: AccionesFoto, onCerrar: () -> Unit) {
-    AruyHoja("Agregar foto", onCerrar) {
+fun HojaAgregarFoto(
+    acciones: AccionesFoto,
+    onCerrar: () -> Unit,
+    titulo: String = "Agregar foto",
+    texto: String = "Aruy reduce la foto, la convierte a WebP y la analiza en tu teléfono para sugerirte una categoría. Tú decides."
+) {
+    AruyHoja(titulo, onCerrar) {
         Text(
-            "Aruy reduce la foto, la convierte a WebP y la analiza en tu teléfono para sugerirte una categoría. Tú decides.",
+            texto,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

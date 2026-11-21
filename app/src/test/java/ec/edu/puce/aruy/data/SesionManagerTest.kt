@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.data
 
+import ec.edu.puce.aruy.data.sesion.AlmacenSesion
 import ec.edu.puce.aruy.data.sesion.Jwt
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.model.EstadoSesion
@@ -27,7 +28,7 @@ class SesionManagerTest {
         perfilPrestadorId = "p1"
     )
 
-    private fun manager(almacen: AlmacenEnMemoria) =
+    private fun manager(almacen: AlmacenSesion) =
         SesionManager(almacen, CoroutineScope(Dispatchers.Unconfined), ahoraMs = { ahora })
 
     @Test
@@ -35,7 +36,49 @@ class SesionManagerTest {
         assertEquals(ahora / 1000 + 3600, Jwt.vencimientoSegundos(tokenVigente))
         assertFalse(Jwt.estaVencido(tokenVigente, ahora))
         assertTrue(Jwt.estaVencido(tokenVencido, ahora))
-        assertTrue(Jwt.estaVencido("no-es-un-jwt", ahora))
+        // un token ilegible NO se da por vencido: lo decide el servidor (así un error de lectura no saca a nadie de su cuenta)
+        assertFalse(Jwt.estaVencido("no-es-un-jwt", ahora))
+    }
+
+    @Test
+    fun el_vencimiento_se_muestra_con_dia_y_hora() {
+        val texto = Jwt.vencimientoLegible(tokenVigente)
+        assertTrue(texto.orEmpty(), Regex("\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}").matches(texto.orEmpty()))
+        assertNull(Jwt.vencimientoLegible("no-es-un-jwt"))
+    }
+
+    @Test
+    fun un_token_ilegible_guardado_no_cierra_la_sesion() = runBlocking {
+        val m = manager(AlmacenEnMemoria(sesion("no-es-un-jwt")))
+        m.cargar()
+        assertTrue(m.estado.value is EstadoSesion.Autenticada)
+        assertNull(m.aviso.value)
+    }
+
+    @Test
+    fun si_la_sesion_guardada_no_se_puede_abrir_se_dice_el_motivo() = runBlocking {
+        val m = manager(AlmacenIlegible("la clave de seguridad del teléfono no pudo abrir tu sesión guardada"))
+        m.cargar()
+        assertEquals(EstadoSesion.SinSesion, m.estado.value)
+        assertEquals(
+            "No pudimos recuperar tu sesión: la clave de seguridad del teléfono no pudo abrir tu sesión guardada. Inicia sesión de nuevo.",
+            m.aviso.value
+        )
+    }
+
+    @Test
+    fun si_leer_el_almacenamiento_falla_tambien_se_dice() = runBlocking {
+        val m = manager(AlmacenQueFalla())
+        m.cargar()
+        assertEquals(EstadoSesion.SinSesion, m.estado.value)
+        assertTrue(m.aviso.value.orEmpty().startsWith("No pudimos recuperar tu sesión: no se pudo leer el almacenamiento"))
+    }
+
+    @Test
+    fun sin_nada_guardado_no_hay_aviso() = runBlocking {
+        val m = manager(AlmacenEnMemoria())
+        m.cargar()
+        assertNull(m.aviso.value)
     }
 
     @Test
@@ -62,7 +105,8 @@ class SesionManagerTest {
         m.cargar()
         assertEquals(EstadoSesion.SinSesion, m.estado.value)
         assertNull(almacen.guardada)
-        assertEquals(SesionManager.MENSAJE_VENCIDA, m.aviso.value)
+        // dice CUÁNDO venció, para que se pueda saber si fue por fecha
+        assertTrue(m.aviso.value.orEmpty(), m.aviso.value.orEmpty().startsWith("Tu sesión venció el "))
     }
 
     @Test
@@ -84,7 +128,7 @@ class SesionManagerTest {
         m.iniciar(sesion(tokenVigente))
         m.expirar()
         assertEquals(EstadoSesion.SinSesion, m.estado.value)
-        assertEquals(SesionManager.MENSAJE_VENCIDA, m.aviso.value)
+        assertEquals(SesionManager.MENSAJE_RECHAZADA, m.aviso.value)
         assertNull(almacen.guardada)
         m.avisoMostrado()
         assertNull(m.aviso.value)

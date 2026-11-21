@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
 import ec.edu.puce.aruy.data.repository.ActividadLocalRepository
-import ec.edu.puce.aruy.data.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.usecase.ObtenerCatalogoUseCase
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.catalogo.FiltrosCatalogo
@@ -38,6 +39,7 @@ internal fun SesionManager.usuarioIdFlow() =
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogoViewModel(
     private val repositorio: CatalogoRepository,
+    private val obtenerCatalogo: ObtenerCatalogoUseCase,
     local: ActividadLocalRepository,
     sesion: SesionManager
 ) : ViewModel() {
@@ -74,7 +76,7 @@ class CatalogoViewModel(
         _catalogo.value = EstadoApi.Cargando
         viewModelScope.launch {
             try {
-                _catalogo.value = EstadoApi.Exito(repositorio.cargarCatalogo())
+                _catalogo.value = EstadoApi.Exito(obtenerCatalogo())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

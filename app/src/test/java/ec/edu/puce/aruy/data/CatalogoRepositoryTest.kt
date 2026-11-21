@@ -1,7 +1,7 @@
 package ec.edu.puce.aruy.data
 
 import ec.edu.puce.aruy.data.remote.RetrofitClient
-import ec.edu.puce.aruy.data.repository.CatalogoRepository
+import ec.edu.puce.aruy.data.repository.CatalogoRepositoryImpl
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -16,7 +16,7 @@ import org.junit.Test
 class CatalogoRepositoryTest {
 
     private lateinit var servidor: MockWebServer
-    private lateinit var repositorio: CatalogoRepository
+    private lateinit var repositorio: CatalogoRepositoryImpl
 
     private val servicios = """
         [{"id":"s1","prestador_id":"p1","titulo":"Reparación de fugas","descripcion":"Arreglo fugas",
@@ -62,7 +62,7 @@ class CatalogoRepositoryTest {
             start()
         }
         val cliente = RetrofitClient({ null }, {}, servidor.url("/").toString())
-        repositorio = CatalogoRepository(cliente.servicioApi, cliente.perfilApi, cliente.calificacionApi)
+        repositorio = CatalogoRepositoryImpl(cliente.servicioApi, cliente.perfilApi, cliente.calificacionApi)
     }
 
     @After

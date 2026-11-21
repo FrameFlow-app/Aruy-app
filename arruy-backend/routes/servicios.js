@@ -6,7 +6,7 @@ const { exigirToken, exigirRol } = require('../middleware/auth');
 const { duenoDeServicio } = require('../propiedad');
 const { normalizarAWebp, sharpDisponible, ErrorImagen } = require('../imagen');
 const { config, detectarTipo, subirWebp, urlPublica, borrarReferencias, TIPOS_ENTRADA } = require('../almacenamiento');
-const { esUuid, textoValido, limpiarEtiquetas, CATEGORIAS } = require('../validar');
+const { normalizarTitulo, esUuid, textoValido, limpiarEtiquetas, CATEGORIAS } = require('../validar');
 
 const router = express.Router();
 
@@ -117,7 +117,7 @@ router.post('/', exigirToken, exigirRol('PRESTADOR'), async (req, res) => {
       `INSERT INTO servicios (id, prestador_id, titulo, descripcion, categoria, precio_referencial, disponible, fecha_publicacion)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        RETURNING ${COLUMNAS}`,
-      [crypto.randomUUID(), perfil.rows[0].id, b.titulo.trim(), b.descripcion.trim(), b.categoria, p ?? null, b.disponible ?? true]
+      [crypto.randomUUID(), perfil.rows[0].id, normalizarTitulo(b.titulo), b.descripcion.trim(), b.categoria, p ?? null, b.disponible ?? true]
     );
     await client.query('COMMIT');
     res.status(201).json(aServicio(s.rows[0]));
@@ -141,7 +141,7 @@ router.patch('/:id', exigirToken, exigirRol('PRESTADOR'), async (req, res) => {
 
   if (b.titulo !== undefined) {
     if (!textoValido(b.titulo, 150)) return res.status(400).json({ error: 'titulo invalido' });
-    poner('titulo', b.titulo.trim());
+    poner('titulo', normalizarTitulo(b.titulo));
   }
   if (b.descripcion !== undefined) {
     if (!textoValido(b.descripcion, 2000)) return res.status(400).json({ error: 'descripcion invalida' });

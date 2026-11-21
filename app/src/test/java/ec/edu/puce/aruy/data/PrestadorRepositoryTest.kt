@@ -3,8 +3,8 @@ package ec.edu.puce.aruy.data
 import com.google.gson.JsonParser
 import ec.edu.puce.aruy.data.remote.RetrofitClient
 import ec.edu.puce.aruy.data.remote.util.MensajesPrestador
-import ec.edu.puce.aruy.data.repository.DatosServicio
-import ec.edu.puce.aruy.data.repository.PrestadorRepository
+import ec.edu.puce.aruy.domain.model.DatosServicio
+import ec.edu.puce.aruy.data.repository.PrestadorRepositoryImpl
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import kotlinx.coroutines.runBlocking
@@ -25,7 +25,7 @@ import retrofit2.Response
 class PrestadorRepositoryTest {
 
     private lateinit var servidor: MockWebServer
-    private lateinit var repositorio: PrestadorRepository
+    private lateinit var repositorio: PrestadorRepositoryImpl
 
     private val servicioJson = """
         {"id":"s1","prestador_id":"p1","titulo":"Instalación","descripcion":"Instalo breakers",
@@ -36,7 +36,7 @@ class PrestadorRepositoryTest {
     fun preparar() {
         servidor = MockWebServer().apply { start() }
         val cliente = RetrofitClient({ "token" }, {}, servidor.url("/").toString())
-        repositorio = PrestadorRepository(cliente.prestadorApi, cliente.servicioApi)
+        repositorio = PrestadorRepositoryImpl(cliente.prestadorApi, cliente.servicioApi)
     }
 
     @After
@@ -82,11 +82,11 @@ class PrestadorRepositoryTest {
     @Test
     fun las_etiquetas_se_limpian_antes_de_enviarse() {
         val muchas = (1..30).map { "Etiqueta $it" } + listOf("  ", "Etiqueta 1")
-        val unidas = PrestadorRepository.unirEtiquetas(muchas)!!.split(",")
+        val unidas = PrestadorRepositoryImpl.unirEtiquetas(muchas)!!.split(",")
         assertEquals(20, unidas.size)
         assertEquals("Etiqueta 1", unidas.first())
-        assertTrue(PrestadorRepository.unirEtiquetas(listOf("x".repeat(80)))!!.length == 50)
-        assertNull(PrestadorRepository.unirEtiquetas(emptyList()))
+        assertTrue(PrestadorRepositoryImpl.unirEtiquetas(listOf("x".repeat(80)))!!.length == 50)
+        assertNull(PrestadorRepositoryImpl.unirEtiquetas(emptyList()))
     }
 
     @Test

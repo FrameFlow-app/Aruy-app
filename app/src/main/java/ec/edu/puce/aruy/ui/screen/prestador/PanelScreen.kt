@@ -24,12 +24,11 @@ import androidx.compose.material.icons.filled.WorkOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.validation.ValidacionesServicio
 import ec.edu.puce.aruy.ui.components.AruyInterruptor
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
@@ -58,9 +58,12 @@ fun PanelScreen(
     fotoUrl: String? = null,
     onNuevoServicio: () -> Unit,
     onVerServicios: () -> Unit,
-    onEditar: (String) -> Unit
+    onEditar: (String) -> Unit,
+    solicitudesPorResponder: Int = 0,
+    solicitudesNuevas: Int = 0,
+    onSolicitudes: () -> Unit = {}
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.cargarSiHaceFalta() }
@@ -95,6 +98,22 @@ fun PanelScreen(
                             descripcion = if (ui.recibeSolicitudes) "Apareces como «Disponible ahora» en las búsquedas."
                             else "Los clientes verán que no estás disponible por ahora."
                         )
+                    }
+                }
+                item {
+                    AruyTarjeta(
+                        tipo = if (solicitudesPorResponder > 0 || solicitudesNuevas > 0) TipoTarjeta.ACENTO else TipoTarjeta.NORMAL,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Solicitudes", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            when {
+                                solicitudesPorResponder > 0 -> "Tienes $solicitudesPorResponder por responder."
+                                else -> "Aquí aparecen las personas que te piden un servicio."
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        BotonRelleno("Ver solicitudes", onSolicitudes, modifier = Modifier.padding(top = 8.dp))
                     }
                 }
                 item { CompletaTuPerfil(publicados = ui.servicios.size, fotos = ui.totalFotos) }
@@ -134,7 +153,7 @@ fun PanelScreen(
         if (ui.cargando && ui.cargado) {
             LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }
 
