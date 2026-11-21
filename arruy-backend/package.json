@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test test/limites.test.js test/token.test.js test/cola.test.js test/proceso.test.js test/cuenta-unica.test.js test/mantener-activo.test.js test/titulo.test.js test/registro.test.js test/edad.test.js test/edad-sin-columna.test.js test/renovar.test.js test/solicitudes.test.js test/esquema.test.js test/limites-contenido.test.js test/mensajes.test.js test/recuperar.test.js test/avisos.test.js"
+    "test": "node --test test/limites.test.js test/token.test.js test/cola.test.js test/proceso.test.js test/cuenta-unica.test.js test/mantener-activo.test.js test/titulo.test.js test/registro.test.js test/edad.test.js test/edad-sin-columna.test.js test/renovar.test.js test/solicitudes.test.js test/esquema.test.js test/limites-contenido.test.js test/mensajes.test.js test/recuperar.test.js test/avisos.test.js test/cors.test.js"
   },
   "keywords": [],
   "type": "commonjs",
