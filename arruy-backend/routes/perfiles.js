@@ -5,7 +5,7 @@ const { registrarError } = require('../registro');
 const { exigirToken, exigirRol, firmarToken } = require('../middleware/auth');
 const { textoValido, esUuid } = require('../validar');
 const { urlPublica } = require('../almacenamiento');
-
+const { aWhatsapp } = require('../whatsapp');
 const router = express.Router();
 
 const COLUMNAS =
@@ -74,15 +74,6 @@ router.patch('/yo', exigirToken, exigirRol('PRESTADOR'), async (req, res) => {
     res.status(500).json({ error: 'Error al editar el perfil' });
   }
 });
-
-// Numero para abrir WhatsApp (https://wa.me/<numero>): solo digitos, con el codigo de Ecuador (593).
-// Sirve para celulares ecuatorianos (09XXXXXXXX o +593 9XXXXXXXX); si no se puede calcular, null.
-function aWhatsapp(telefono) {
-  const d = String(telefono || '').replace(/\D/g, '');
-  if (/^593\d{9}$/.test(d)) return d;
-  if (/^0\d{9}$/.test(d)) return `593${d.slice(1)}`;
-  return null;
-}
 
 // Perfil PUBLICO de un prestador. El id es el prestador_id de los servicios (el id del PERFIL).
 // No pide token: la app lo usa para mostrar el nombre, la foto, la calificacion y el boton de WhatsApp.

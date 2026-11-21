@@ -30,6 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +45,8 @@ import ec.edu.puce.aruy.ui.components.AruyInterruptor
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
 import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.BotonTexto
+import ec.edu.puce.aruy.ui.components.AccionesCuenta
+import ec.edu.puce.aruy.ui.components.MenuCuenta
 import ec.edu.puce.aruy.ui.components.EstadoCargando
 import ec.edu.puce.aruy.ui.components.EstadoVacio
 import ec.edu.puce.aruy.ui.components.tituloDeError
@@ -61,8 +66,10 @@ fun PanelScreen(
     onEditar: (String) -> Unit,
     solicitudesPorResponder: Int = 0,
     solicitudesNuevas: Int = 0,
-    onSolicitudes: () -> Unit = {}
+    onSolicitudes: () -> Unit = {},
+    cuenta: AccionesCuenta? = null
 ) {
+    var menuAbierto by rememberSaveable { mutableStateOf(false) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
@@ -85,6 +92,7 @@ fun PanelScreen(
                     EncabezadoSaludo(
                         nombre = nombre.trim().substringBefore(' '),
                         fotoUrl = fotoUrl,
+                        onAvatar = cuenta?.let { { menuAbierto = true } },
                         subtitulo = "Así va tu perfil.",
                         modifier = Modifier.semantics { heading() }
                     )
@@ -154,6 +162,10 @@ fun PanelScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
         }
         AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+
+    if (menuAbierto && cuenta != null) {
+        MenuCuenta(nombreCompleto = nombre.trim(), fotoUrl = fotoUrl, acciones = cuenta, onCerrar = { menuAbierto = false })
     }
 }
 

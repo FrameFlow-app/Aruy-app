@@ -1,6 +1,8 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
 import ec.edu.puce.aruy.domain.usecase.EnviarSolicitudUseCase
+import ec.edu.puce.aruy.domain.usecase.ObtenerSolicitudesUseCase
+import ec.edu.puce.aruy.domain.model.TipoSolicitudes
 import ec.edu.puce.aruy.data.remote.util.MensajesSolicitud
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -45,14 +47,17 @@ data class DetalleUi(
     val fotos: List<FotoPortafolio> = emptyList(),
     val opiniones: ResumenOpiniones? = null,
     val enviandoOpinion: Boolean = false,
-    val enviandoSolicitud: Boolean = false
+    val enviandoSolicitud: Boolean = false,
+    /** Id de mi solicitud pendiente o aceptada para este servicio (si ya pedí): el botón pasa a "Ver chat". */
+    val solicitudActivaId: String? = null
 )
 
 class DetalleViewModel(
     private val servicioId: String,
     inicial: ServicioConPrestador?,
     private val repositorio: CatalogoRepository,
-    private val enviarSolicitudCaso: EnviarSolicitudUseCase
+    private val enviarSolicitudCaso: EnviarSolicitudUseCase,
+    private val obtenerSolicitudesCaso: ObtenerSolicitudesUseCase? = null
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(DetalleUi(item = inicial, cargando = inicial == null))
@@ -67,21 +72,38 @@ class DetalleViewModel(
     }
 
     /** "Pedir este servicio": la solicitud le llega al prestador dentro de Aruy. [alExito] cierra la hoja. */
-    fun enviarSolicitud(mensaje: String, alExito: () -> Unit) {
+    fun enviarSolicitud(mensaje: String, alExito: (solicitudId: String) -> Unit) {
         if (_ui.value.enviandoSolicitud) return
-        val nombre = _ui.value.item?.nombrePrestador ?: "el prestador"
+
         _ui.update { it.copy(enviandoSolicitud = true) }
         viewModelScope.launch {
             try {
-                enviarSolicitudCaso(servicioId, mensaje)
-                _ui.update { it.copy(enviandoSolicitud = false) }
-                _mensajes.tryEmit(Aviso.exito("¡Solicitud enviada! Te avisaremos cuando $nombre responda."))
-                alExito()
+                val creada = enviarSolicitudCaso(servicioId, mensaje)
+                _ui.update { it.copy(enviandoSolicitud = false, solicitudActivaId = creada.id) }
+                alExito(creada.id)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(enviandoSolicitud = false) }
                 _mensajes.tryEmit(Aviso.error(MensajesSolicitud.alEnviar(e)))
+            }
+        }
+    }
+
+    /**
+     * Mira si ya pediste este servicio y la solicitud sigue viva (pendiente o aceptada): entonces el botón abre ese chat.
+     * Solo para quien tiene cuenta; si falla, se queda el botón de solicitar.
+     */
+    fun buscarSolicitudActiva() {
+        val caso = obtenerSolicitudesCaso ?: return
+        viewModelScope.launch {
+            try {
+                val activa = caso(TipoSolicitudes.ENVIADAS).firstOrNull { it.servicioId == servicioId && it.activa }
+                _ui.update { it.copy(solicitudActivaId = activa?.id) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // sin internet: no pasa nada, se ofrece "Solicitar" y el servidor avisa si ya existe
             }
         }
     }

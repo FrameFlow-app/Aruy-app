@@ -33,7 +33,9 @@ class ResumenSolicitudesStore(private val obtener: ObtenerResumenSolicitudesUseC
         }
         val antes = _resumen.value
         _resumen.value = nuevo
-        if (nuevo.recibidasNuevas > antes.recibidasNuevas || nuevo.enviadasNovedades > antes.enviadasNovedades) {
+        if (nuevo.recibidasNuevas > antes.recibidasNuevas || nuevo.enviadasNovedades > antes.enviadasNovedades ||
+            nuevo.mensajesSinLeer > antes.mensajesSinLeer
+        ) {
             _llegaron.tryEmit(nuevo)
         }
     }

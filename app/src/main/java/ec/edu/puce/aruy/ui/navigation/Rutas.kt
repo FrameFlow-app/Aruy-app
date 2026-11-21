@@ -44,12 +44,17 @@ object Rutas {
     const val PRO = "aruy-pro"
     const val OFRECER = "ofrecer-servicios"
     const val SOLICITUDES = "solicitudes-aruy"
+    const val CHAT = "chat"
+    const val RECUPERAR = "recuperar"
 
     /** Patrones con argumentos, tal como se registran en el NavHost. */
     const val PATRON_BUSCAR = "$BUSCAR?cat={cat}&foco={foco}"
     const val PATRON_EDITOR = "$EDITOR?id={id}"
     const val PATRON_SERVICIO = "$SERVICIO/{id}"
     const val PATRON_PRESTADOR = "$PRESTADOR_PUBLICO/{id}"
+    const val PATRON_CHAT = "$CHAT/{solicitudId}"
+
+    fun chat(solicitudId: String) = "$CHAT/$solicitudId"
 
     fun buscar(categoria: CategoriaServicio? = null, enfocar: Boolean = false) =
         "$BUSCAR?cat=${categoria?.name.orEmpty()}&foco=$enfocar"
@@ -114,6 +119,6 @@ fun rutaPermitida(ruta: String, rol: RolNavegacion): Boolean = when (ruta) {
     // Un invitado no ve el detalle: al tocar un servicio se le ofrece crear su cuenta
     Rutas.PERFIL, Rutas.SERVICIO, Rutas.PRESTADOR_PUBLICO, Rutas.REPORTES,
     // OFRECER queda abierta a quien ya tiene cuenta: al activarse el perfil el rol cambia, y la pantalla no debe cerrarse de golpe
-    Rutas.EDITAR_PERFIL, Rutas.AJUSTES, Rutas.PERMISOS, Rutas.PRIVACIDAD, Rutas.BAJA, Rutas.OFRECER, Rutas.SOLICITUDES -> rol != RolNavegacion.INVITADO
+    Rutas.EDITAR_PERFIL, Rutas.AJUSTES, Rutas.PERMISOS, Rutas.PRIVACIDAD, Rutas.BAJA, Rutas.OFRECER, Rutas.SOLICITUDES, Rutas.CHAT -> rol != RolNavegacion.INVITADO
     else -> true
 }

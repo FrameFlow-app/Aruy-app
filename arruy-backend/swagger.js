@@ -36,6 +36,7 @@ const tags = [
   { name: 'Perfiles', description: 'Perfil del prestador (oficio y zona)' },
   { name: 'Servicios', description: 'Catálogo de servicios y su publicación' },
   { name: 'Fotos', description: 'Etiquetas de las fotos del portafolio (IA)' },
+  { name: 'Avisos', description: 'Mantenimiento y versiones de la app (público)' },
   { name: 'Solicitudes', description: 'Pedirle un servicio a un prestador, dentro de la app' },
 ];
 
@@ -51,6 +52,42 @@ const paths = {
         200: {
           description: 'El servidor está funcionando',
           content: json({ type: 'object', properties: { estado: { type: 'string', example: 'ok' } } }),
+        },
+      },
+    },
+  },
+
+  '/avisos': {
+    get: {
+      tags: ['Avisos'],
+      summary: 'Aviso de mantenimiento y versiones de la app',
+      description: 'Público (sin token). Se configura con variables de entorno. Cache-Control: public, max-age=300.',
+      responses: {
+        200: {
+          description: '`mantenimiento` es null si no hay aviso o si ya pasó su fin',
+          content: json({
+            type: 'object',
+            properties: {
+              mantenimiento: {
+                nullable: true,
+                type: 'object',
+                properties: {
+                  activo: { type: 'boolean', example: true },
+                  mensaje: { type: 'string' },
+                  inicio: { type: 'string', format: 'date-time', nullable: true },
+                  fin: { type: 'string', format: 'date-time', nullable: true },
+                },
+              },
+              version: {
+                type: 'object',
+                properties: {
+                  reciente: { type: 'integer', example: 12 },
+                  minima: { type: 'integer', example: 10 },
+                  notas: { type: 'string' },
+                },
+              },
+            },
+          }),
         },
       },
     },
@@ -363,15 +400,33 @@ const components = {
         fecha_creacion: { type: 'string', format: 'date-time' },
         fecha_actualizacion: { type: 'string', format: 'date-time' },
         sin_ver: { type: 'boolean', description: 'true si todavía no la viste' },
+        whatsapp_compartido: { type: 'boolean', description: 'true si el prestador ya compartió su WhatsApp en el chat' },
+        mensajes_sin_leer: { type: 'integer', description: 'Mensajes de la otra persona que todavía no leíste' },
+        ultimo_mensaje: {
+          type: 'object',
+          nullable: true,
+          properties: { texto: { type: 'string' }, fecha: { type: 'string', format: 'date-time' } },
+        },
         contraparte: {
           type: 'object',
           description: 'La otra persona: el prestador en las enviadas, el cliente en las recibidas',
           properties: {
             nombre: { type: 'string' },
             foto_perfil: { type: 'string', nullable: true },
-            telefono: { type: 'string', nullable: true, description: 'Solo cuando la solicitud está ACEPTADA' },
+            telefono: { type: 'string', nullable: true, description: 'Del prestador (en las enviadas): solo si whatsapp_compartido. Del cliente (en las recibidas): solo cuando la solicitud está ACEPTADA' },
           },
         },
+      },
+    },
+    Mensaje: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        autor_id: { type: 'string', format: 'uuid' },
+        es_mio: { type: 'boolean' },
+        texto: { type: 'string', maxLength: 1000, description: 'En un mensaje WHATSAPP es el número normalizado (ej. 593991234567)' },
+        tipo: { type: 'string', enum: ['TEXTO', 'WHATSAPP'] },
+        fecha_creacion: { type: 'string', format: 'date-time' },
       },
     },
     Error: { type: 'object', properties: { error: { type: 'string', example: 'Id invalido' } } },
@@ -675,11 +730,41 @@ paths['/auth/renovar'] = {
   },
 };
 
+paths['/auth/olvide'] = {
+  post: {
+    tags: ['Autenticación'],
+    summary: 'Olvidé mi contraseña: pedir un código por correo',
+    description: 'Si el correo pertenece a una cuenta activa, envía un código de 6 dígitos que vence en 15 minutos (invalida los anteriores). Responde SIEMPRE lo mismo, exista o no la cuenta. Límite: 3 por hora por red y por correo.',
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email'], properties: { email: { type: 'string', format: 'email' } } } } } },
+    responses: {
+      200: { description: 'Siempre el mismo mensaje', content: json({ type: 'object', properties: { mensaje: { type: 'string', example: 'Si el correo está registrado, te enviamos un código.' } } }) },
+      429: errorRespuesta('Demasiados pedidos'),
+    },
+  },
+};
+
+paths['/auth/restablecer'] = {
+  post: {
+    tags: ['Autenticación'],
+    summary: 'Cambiar la contraseña con el código recibido',
+    description: 'Tras 5 intentos fallidos el código se anula. Límite: 10 por hora por red.',
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: { type: 'object', required: ['email', 'codigo', 'password'], properties: { email: { type: 'string', format: 'email' }, codigo: { type: 'string', example: '123456' }, password: { type: 'string', minLength: 8 } } } } },
+    },
+    responses: {
+      200: { description: 'Contraseña cambiada', content: json({ type: 'object', properties: { mensaje: { type: 'string', example: 'Contraseña actualizada' } } }) },
+      400: errorRespuesta('Código inválido o vencido, o contraseña inválida'),
+      429: errorRespuesta('Demasiados intentos'),
+    },
+  },
+};
+
 paths['/solicitudes'] = {
   get: {
     tags: ['Solicitudes'],
     summary: 'Mis solicitudes',
-    description: '`tipo=enviadas`: las que yo hice. `tipo=recibidas`: las que me hicieron como prestador. El teléfono de la otra persona solo aparece cuando la solicitud está ACEPTADA.',
+    description: '`tipo=enviadas`: las que yo hice. `tipo=recibidas`: las que me hicieron como prestador. El teléfono del prestador solo le aparece al cliente cuando el prestador comparte su WhatsApp; el del cliente le aparece al prestador cuando la solicitud está ACEPTADA.',
     security: conToken,
     parameters: [{ name: 'tipo', in: 'query', required: true, schema: { type: 'string', enum: ['enviadas', 'recibidas'] } }],
     responses: {
@@ -723,6 +808,7 @@ paths['/solicitudes/resumen'] = {
             recibidas_nuevas: { type: 'integer', description: 'Solicitudes que me hicieron y todavía no vi' },
             recibidas_pendientes: { type: 'integer', description: 'Solicitudes que me hicieron y aún no respondí' },
             enviadas_novedades: { type: 'integer', description: 'Solicitudes mías que cambiaron y todavía no vi' },
+            mensajes_sin_leer: { type: 'integer', description: 'Mensajes de chat de la otra persona que todavía no leí' },
           },
         }),
       },
@@ -741,6 +827,63 @@ paths['/solicitudes/vistas'] = {
       200: { description: 'Cuántas se marcaron', content: json({ type: 'object', properties: { marcadas: { type: 'integer' } } }) },
       400: errorRespuesta('tipo no válido'),
       401: e401,
+    },
+  },
+};
+
+const idSolicitud = [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }];
+
+paths['/solicitudes/{id}/mensajes'] = {
+  get: {
+    tags: ['Solicitudes'],
+    summary: 'Mensajes del chat de una solicitud',
+    description: 'Solo el cliente o el prestador de la solicitud. Ordenados del más antiguo al más nuevo (máximo 300). Marca como leídos los de la otra persona. `desde` (fecha ISO) trae solo los posteriores.',
+    security: conToken,
+    parameters: [...idSolicitud, { name: 'desde', in: 'query', required: false, schema: { type: 'string', format: 'date-time' } }],
+    responses: {
+      200: { description: 'Lista de mensajes', content: json({ type: 'array', items: ref('Mensaje') }) },
+      400: errorRespuesta('Id o fecha no válidos'),
+      401: e401,
+      403: errorRespuesta('No participas en esta solicitud'),
+      404: errorRespuesta('Solicitud no encontrada'),
+    },
+  },
+  post: {
+    tags: ['Solicitudes'],
+    summary: 'Enviar un mensaje en el chat',
+    description: 'Máximo 60 mensajes cada 10 minutos por persona. No se puede si la solicitud está RECHAZADA o CANCELADA.',
+    security: conToken,
+    parameters: idSolicitud,
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: { type: 'object', required: ['texto'], properties: { texto: { type: 'string', minLength: 1, maxLength: 1000 } } } } },
+    },
+    responses: {
+      201: { description: 'Mensaje creado', content: json(ref('Mensaje')) },
+      400: errorRespuesta('Texto inválido'),
+      401: e401,
+      403: errorRespuesta('No participas en esta solicitud'),
+      404: errorRespuesta('Solicitud no encontrada'),
+      409: errorRespuesta('Solicitud rechazada o cancelada'),
+    },
+  },
+};
+
+paths['/solicitudes/{id}/whatsapp'] = {
+  post: {
+    tags: ['Solicitudes'],
+    summary: 'Compartir mi WhatsApp en el chat (solo el prestador)',
+    description: 'Crea un mensaje tipo WHATSAPP con el número normalizado y deja whatsapp_compartido = true, con lo que el cliente ya ve el teléfono del prestador. Es idempotente: si ya se compartió devuelve el mensaje existente con 200.',
+    security: conToken,
+    parameters: idSolicitud,
+    responses: {
+      200: { description: 'Ya estaba compartido', content: json(ref('Mensaje')) },
+      201: { description: 'Compartido ahora', content: json(ref('Mensaje')) },
+      400: errorRespuesta('El prestador no tiene un celular válido'),
+      401: e401,
+      403: errorRespuesta('No eres el prestador de esta solicitud'),
+      404: errorRespuesta('Solicitud no encontrada'),
+      409: errorRespuesta('Solicitud rechazada o cancelada'),
     },
   },
 };

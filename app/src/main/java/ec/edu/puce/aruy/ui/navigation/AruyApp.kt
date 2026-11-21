@@ -1,8 +1,23 @@
 package ec.edu.puce.aruy.ui.navigation
 
 import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
+import ec.edu.puce.aruy.BuildConfig
+import ec.edu.puce.aruy.domain.model.Actualizacion
+import ec.edu.puce.aruy.domain.usecase.AvisosParaMostrar
+import ec.edu.puce.aruy.ui.components.DialogoActualizacion
+import ec.edu.puce.aruy.ui.components.DialogoMantenimiento
+import ec.edu.puce.aruy.ui.components.abrirActualizacion
 import ec.edu.puce.aruy.ui.viewmodel.SolicitudesViewModel
 import ec.edu.puce.aruy.ui.screen.solicitudes.SolicitudesScreen
+import ec.edu.puce.aruy.ui.screen.solicitudes.ChatScreen
+import ec.edu.puce.aruy.ui.screen.auth.RecuperarScreen
+import ec.edu.puce.aruy.ui.viewmodel.ChatViewModel
+import ec.edu.puce.aruy.ui.viewmodel.RecuperarViewModel
+import ec.edu.puce.aruy.domain.solicitudes.textoMensajesNuevos
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import ec.edu.puce.aruy.domain.model.ResumenSolicitudes
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -10,6 +25,7 @@ import androidx.lifecycle.Lifecycle
 import ec.edu.puce.aruy.ui.viewmodel.ActivarPrestadorViewModel
 import ec.edu.puce.aruy.ui.screen.perfil.ActivarPrestadorScreen
 import ec.edu.puce.aruy.ui.components.avisar
+import ec.edu.puce.aruy.ui.components.AccionesCuenta
 import ec.edu.puce.aruy.ui.components.Aviso
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,6 +141,7 @@ fun AruyApp(
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = Rutas.base(entradaActual?.destination?.route)
     val snackbarHostState = remember { SnackbarHostState() }
+    val alcanceApp = rememberCoroutineScope()
 
     val estadoSesion by contenedor.sesionManager.estado.collectAsStateWithLifecycle()
     val rol = rolDe(estadoSesion)
@@ -141,6 +158,20 @@ fun AruyApp(
 
     // ---- Solicitudes: el numerito, los avisos dentro de la app y la consulta cuando la app está cerrada ----
     val resumenSolicitudes by contenedor.resumenSolicitudes.resumen.collectAsStateWithLifecycle()
+
+    // Menú "Tu cuenta" del avatar: mismos destinos y misma acción de cerrar sesión que PerfilScreen
+    val accionesCuenta = AccionesCuenta(
+        esInvitado = rol == RolNavegacion.INVITADO,
+        esPrestador = rol == RolNavegacion.PRESTADOR,
+        onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
+        onEditarPerfil = { navController.navigate(Rutas.EDITAR_PERFIL) },
+        onPro = { navController.navigate(Rutas.PRO) },
+        onAjustes = { navController.navigate(Rutas.AJUSTES) },
+        onPermisos = { navController.navigate(Rutas.PERMISOS) },
+        onCerrarSesion = authViewModel::cerrarSesion,
+        onIniciarSesion = { navController.navigate(Rutas.LOGIN) },
+        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) }
+    )
     val propietarioCiclo = LocalLifecycleOwner.current
     val estadoDeSesion = when (estadoSesion) {
         is EstadoSesion.Autenticada -> 1
@@ -169,7 +200,8 @@ fun AruyApp(
     }
     LaunchedEffect(Unit) {
         contenedor.resumenSolicitudes.llegaron.collect { nuevo ->
-            if (Rutas.base(navController.currentDestination?.route) != Rutas.SOLICITUDES) {
+            val ruta = Rutas.base(navController.currentDestination?.route)
+            if (ruta != Rutas.SOLICITUDES && ruta != Rutas.CHAT) {
                 snackbarHostState.avisar(Aviso.exito(textoDeLlegada(nuevo)))
             }
         }
@@ -179,6 +211,52 @@ fun AruyApp(
         if (abrirRuta != null && estadoDeSesion == 1 && rutaActual != Rutas.SPLASH) {
             navController.navigate(abrirRuta)
             alAbrirRuta()
+        }
+    }
+
+    // Avisos del servidor (mantenimiento y versión nueva): una vez por arranque, cuando ya se leyó la sesión.
+    // Si falla la red no se muestra nada.
+    val contextoApp = LocalContext.current
+    var avisosPendientes by remember { mutableStateOf<AvisosParaMostrar?>(null) }
+    var mantenimientoPorMostrar by remember { mutableStateOf(false) }
+    var actualizacionPorMostrar by remember { mutableStateOf(false) }
+    val sesionResuelta = estadoDeSesion != 0
+    LaunchedEffect(sesionResuelta) {
+        if (!sesionResuelta) return@LaunchedEffect
+        val resultado = runCatching { contenedor.obtenerAvisosCaso(BuildConfig.VERSION_CODE) }.getOrNull() ?: return@LaunchedEffect
+        avisosPendientes = resultado
+        // La obligatoria va sola; si no, primero mantenimiento y luego la opcional
+        if (resultado.decision.actualizacion != Actualizacion.OBLIGATORIA) {
+            mantenimientoPorMostrar = resultado.decision.mostrarMantenimiento
+        }
+        actualizacionPorMostrar = resultado.decision.actualizacion != Actualizacion.NINGUNA
+    }
+    avisosPendientes?.let { pendientes ->
+        val obligatoria = pendientes.decision.actualizacion == Actualizacion.OBLIGATORIA
+        val mantenimiento = pendientes.avisos.mantenimiento
+        when {
+            obligatoria -> DialogoActualizacion(
+                obligatoria = true,
+                notas = pendientes.avisos.version.notas,
+                onActualizar = { abrirActualizacion(contextoApp) },
+                onMasTarde = {}
+            )
+            mantenimientoPorMostrar && mantenimiento != null -> DialogoMantenimiento(mantenimiento) {
+                mantenimientoPorMostrar = false
+                alcanceApp.launch { contenedor.marcarMantenimientoVistoCaso(mantenimiento.huella) }
+            }
+            actualizacionPorMostrar -> DialogoActualizacion(
+                obligatoria = false,
+                notas = pendientes.avisos.version.notas,
+                onActualizar = {
+                    actualizacionPorMostrar = false
+                    abrirActualizacion(contextoApp)
+                },
+                onMasTarde = {
+                    actualizacionPorMostrar = false
+                    alcanceApp.launch { contenedor.omitirVersionCaso(pendientes.avisos.version.reciente) }
+                }
+            )
         }
     }
 
@@ -275,7 +353,8 @@ fun AruyApp(
                     LoginScreen(
                         viewModel = authViewModel,
                         onVolver = { if (!navController.popBackStack()) navController.irLimpio(Rutas.BIENVENIDA) },
-                        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) }
+                        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) },
+                        onOlvide = { navController.navigate(Rutas.RECUPERAR) }
                     )
                 }
                 composable(Rutas.REGISTRO) {
@@ -307,7 +386,8 @@ fun AruyApp(
                             puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
                             onOfrecer = { navController.navigate(Rutas.OFRECER) },
                             solicitudesNuevas = resumenSolicitudes.nuevas,
-                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
+                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
+                            cuenta = accionesCuenta
                         )
                     }
                 }
@@ -374,9 +454,31 @@ fun AruyApp(
                         SolicitudesScreen(
                             viewModel = vm,
                             onVolver = { navController.popBackStack() },
-                            onVerServicio = abrirServicio
+                            onChat = { navController.navigate(Rutas.chat(it)) }
                         )
                     }
+                }
+                composable(Rutas.PATRON_CHAT) { entrada ->
+                    val solicitudId = entrada.arguments?.getString("solicitudId").orEmpty()
+                    Protegida(Rutas.CHAT, rol, irAlInicio) {
+                        val vm: ChatViewModel = viewModel(key = "chat-$solicitudId", factory = contenedor.chatViewModelFactory(solicitudId))
+                        // Al salir del chat los mensajes ya se leyeron: se actualiza el numerito
+                        DisposableEffect(solicitudId) { onDispose { alcanceApp.launch { contenedor.resumenSolicitudes.refrescar() } } }
+                        ChatScreen(viewModel = vm, onVolver = { navController.popBackStack() })
+                    }
+                }
+                composable(Rutas.RECUPERAR) {
+                    val vm: RecuperarViewModel = viewModel(factory = contenedor.recuperarViewModelFactory)
+                    RecuperarScreen(
+                        viewModel = vm,
+                        onVolver = { navController.popBackStack() },
+                        onListo = {
+                            if (!navController.popBackStack(Rutas.LOGIN, inclusive = false)) navController.irLimpio(Rutas.LOGIN)
+                            alcanceApp.launch {
+                                snackbarHostState.avisar(Aviso.exito("Listo, ya puedes entrar con tu nueva contraseña"))
+                            }
+                        }
+                    )
                 }
                 composable(Rutas.OFRECER) {
                     Protegida(Rutas.OFRECER, rol, irAlInicio) {
@@ -431,7 +533,7 @@ fun AruyApp(
                     val id = entrada.arguments?.getString("id").orEmpty()
                     Protegida(Rutas.SERVICIO, rol, irAlInicio) {
                         val vm: DetalleViewModel = viewModel(
-                            factory = fabricaVm { DetalleViewModel(id, catalogo.servicioPorId(id), contenedor.catalogoRepository, contenedor.enviarSolicitudCaso) }
+                            factory = fabricaVm { DetalleViewModel(id, catalogo.servicioPorId(id), contenedor.catalogoRepository, contenedor.enviarSolicitudCaso, contenedor.obtenerSolicitudesCaso) }
                         )
                         DetalleServicioScreen(
                             viewModel = vm,
@@ -439,6 +541,7 @@ fun AruyApp(
                             rol = rol ?: RolNavegacion.INVITADO,
                             onVolver = { navController.popBackStack() },
                             onPrestador = { navController.navigate(Rutas.prestador(it)) },
+                            onChat = { navController.navigate(Rutas.chat(it)) },
                             onCuentaRequerida = { mostrarHojaCuenta = true }
                         )
                     }
@@ -488,7 +591,8 @@ fun AruyApp(
                             onEditar = { navController.navigate(Rutas.editor(it)) },
                             solicitudesPorResponder = resumenSolicitudes.recibidasPendientes,
                             solicitudesNuevas = resumenSolicitudes.recibidasNuevas,
-                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
+                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
+                            cuenta = accionesCuenta
                         )
                     }
                 }
@@ -584,5 +688,7 @@ private const val INTERVALO_SOLICITUDES_MS = 45_000L
 private fun textoDeLlegada(resumen: ResumenSolicitudes): String = when {
     resumen.recibidasNuevas == 1 -> "Tienes una solicitud nueva. Mírala en Mis solicitudes."
     resumen.recibidasNuevas > 1 -> "Tienes ${resumen.recibidasNuevas} solicitudes nuevas. Míralas en Mis solicitudes."
+    resumen.enviadasNovedades > 0 -> "Respondieron tu solicitud. Mírala en Mis solicitudes."
+    resumen.mensajesSinLeer > 0 -> textoMensajesNuevos(resumen.mensajesSinLeer) + ". Léelos en Mis solicitudes."
     else -> "Respondieron tu solicitud. Mírala en Mis solicitudes."
 }

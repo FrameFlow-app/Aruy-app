@@ -22,7 +22,7 @@ test('si una preparacion falla (por permisos, por ejemplo) se anota y las demas 
   const avisos = [];
   const pool = {
     query: async (sql) => {
-      if (sql.includes('CREATE TABLE')) throw new Error('permiso denegado');
+      if (sql.includes('CREATE TABLE IF NOT EXISTS solicitudes')) throw new Error('permiso denegado');
       return { rows: [] };
     },
   };

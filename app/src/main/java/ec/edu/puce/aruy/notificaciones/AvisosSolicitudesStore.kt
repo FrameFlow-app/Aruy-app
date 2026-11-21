@@ -16,16 +16,19 @@ class AvisosSolicitudesStore(private val contexto: Context) {
     private val claveRecibidas = intPreferencesKey("recibidas")
     private val claveEnviadas = intPreferencesKey("enviadas")
 
-    /** (recibidas nuevas, respuestas nuevas) de la última vez. */
-    suspend fun leer(): Pair<Int, Int> {
+    private val claveMensajes = intPreferencesKey("mensajes")
+
+    /** (recibidas nuevas, respuestas nuevas, mensajes sin leer) de la última vez. */
+    suspend fun leer(): Triple<Int, Int, Int> {
         val p = contexto.almacenAvisos.data.first()
-        return (p[claveRecibidas] ?: 0) to (p[claveEnviadas] ?: 0)
+        return Triple(p[claveRecibidas] ?: 0, p[claveEnviadas] ?: 0, p[claveMensajes] ?: 0)
     }
 
-    suspend fun guardar(recibidas: Int, enviadas: Int) {
+    suspend fun guardar(recibidas: Int, enviadas: Int, mensajes: Int = 0) {
         contexto.almacenAvisos.edit {
             it[claveRecibidas] = recibidas
             it[claveEnviadas] = enviadas
+            it[claveMensajes] = mensajes
         }
     }
 
