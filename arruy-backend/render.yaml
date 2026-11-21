@@ -14,6 +14,9 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Opcional: origenes extra permitidos por CORS (separados por coma)
+      - key: CORS_ORIGENES
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SECRET_KEY
