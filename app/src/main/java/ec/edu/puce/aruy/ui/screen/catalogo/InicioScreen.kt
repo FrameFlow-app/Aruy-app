@@ -37,6 +37,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -49,7 +52,9 @@ import ec.edu.puce.aruy.ui.components.AruyTarjeta
 import ec.edu.puce.aruy.ui.components.BarraBusqueda
 import ec.edu.puce.aruy.ui.components.BotonCircular
 import ec.edu.puce.aruy.ui.components.BotonRelleno
+import ec.edu.puce.aruy.ui.components.AccionesCuenta
 import ec.edu.puce.aruy.ui.components.EncabezadoSaludo
+import ec.edu.puce.aruy.ui.components.MenuCuenta
 import ec.edu.puce.aruy.ui.components.EstadoVacio
 import ec.edu.puce.aruy.ui.components.Esqueleto
 import ec.edu.puce.aruy.ui.components.FilaServicio
@@ -80,8 +85,10 @@ fun InicioScreen(
     puedeOfrecer: Boolean = false,
     onOfrecer: () -> Unit = {},
     solicitudesNuevas: Int = 0,
-    onSolicitudes: () -> Unit = {}
+    onSolicitudes: () -> Unit = {},
+    cuenta: AccionesCuenta? = null
 ) {
+    var menuAbierto by rememberSaveable { mutableStateOf(false) }
     val estado by catalogo.catalogo.collectAsStateWithLifecycle()
     val vistosIds by actividad.vistosIds.collectAsStateWithLifecycle()
     val favoritosIds by actividad.favoritosIds.collectAsStateWithLifecycle()
@@ -97,6 +104,7 @@ fun InicioScreen(
             EncabezadoSaludo(
                 nombre = nombre?.trim()?.substringBefore(' ')?.takeIf { it.isNotEmpty() } ?: "invitado",
                 fotoUrl = fotoUrl,
+                onAvatar = cuenta?.let { { menuAbierto = true } },
                 subtitulo = "¿Qué servicio necesitas hoy?",
                 accion = {
                     Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalAlignment = Alignment.CenterVertically) {
@@ -194,6 +202,10 @@ fun InicioScreen(
                 }
             }
         }
+    }
+
+    if (menuAbierto && cuenta != null) {
+        MenuCuenta(nombreCompleto = nombre.orEmpty().trim(), fotoUrl = fotoUrl, acciones = cuenta, onCerrar = { menuAbierto = false })
     }
 }
 

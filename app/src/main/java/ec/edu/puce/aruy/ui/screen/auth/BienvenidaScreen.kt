@@ -53,19 +53,14 @@ fun BienvenidaScreen(
         ) {
             Tejido(Modifier.fillMaxWidth())
             Spacer(Modifier.height(Espacios.l))
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(Espacios.l)
-            ) { MarcaAruy(tamano = 52.dp) }
+            MarcaAruy(tamano = 88.dp)
             Text(
                 "Aruy",
                 style = MaterialTheme.typography.displayLarge,
                 modifier = Modifier.semantics { heading() }
             )
             Text(
-                "Encuentra a quien necesitas, cerca de ti.",
+                "Ofrece tu trabajo. Encuentra tu cliente.",
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(

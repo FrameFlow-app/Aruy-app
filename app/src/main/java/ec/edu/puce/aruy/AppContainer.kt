@@ -1,6 +1,17 @@
 package ec.edu.puce.aruy
 
 import ec.edu.puce.aruy.ui.viewmodel.SolicitudesViewModel
+import ec.edu.puce.aruy.ui.viewmodel.ChatViewModel
+import ec.edu.puce.aruy.ui.viewmodel.RecuperarViewModel
+import ec.edu.puce.aruy.data.repository.MensajeRepositoryImpl
+import ec.edu.puce.aruy.data.repository.RecuperarRepositoryImpl
+import ec.edu.puce.aruy.domain.repository.MensajeRepository
+import ec.edu.puce.aruy.domain.repository.RecuperarRepository
+import ec.edu.puce.aruy.domain.usecase.CompartirWhatsappUseCase
+import ec.edu.puce.aruy.domain.usecase.EnviarMensajeUseCase
+import ec.edu.puce.aruy.domain.usecase.ObtenerMensajesUseCase
+import ec.edu.puce.aruy.domain.usecase.PedirCodigoUseCase
+import ec.edu.puce.aruy.domain.usecase.RestablecerContrasenaUseCase
 import ec.edu.puce.aruy.notificaciones.ProgramadorAvisos
 import ec.edu.puce.aruy.notificaciones.NotificadorSolicitudes
 import ec.edu.puce.aruy.notificaciones.AvisosSolicitudesStore
@@ -13,6 +24,12 @@ import ec.edu.puce.aruy.domain.repository.SolicitudRepository
 import ec.edu.puce.aruy.data.solicitudes.ResumenSolicitudesStore
 import ec.edu.puce.aruy.data.repository.SolicitudRepositoryImpl
 import android.content.Context
+import ec.edu.puce.aruy.data.local.AvisosVistosStore
+import ec.edu.puce.aruy.data.repository.AvisosRepositoryImpl
+import ec.edu.puce.aruy.domain.repository.AvisosRepository
+import ec.edu.puce.aruy.domain.usecase.MarcarMantenimientoVistoUseCase
+import ec.edu.puce.aruy.domain.usecase.ObtenerAvisosUseCase
+import ec.edu.puce.aruy.domain.usecase.OmitirVersionUseCase
 import androidx.lifecycle.ViewModelProvider
 import ec.edu.puce.aruy.data.local.BorradorStore
 import ec.edu.puce.aruy.data.local.DatabaseProvider
@@ -90,6 +107,12 @@ class AppContainer(contexto: Context) {
     // Los ViewModels y los casos de uso solo conocen las interfaces del dominio; aquí se elige la implementación
     val renovadorSesion = RenovadorSesion(cliente.authApi, sesionManager)
 
+    // Avisos del servidor: mantenimiento y versión nueva
+    val avisosRepository: AvisosRepository = AvisosRepositoryImpl(cliente.avisosApi, AvisosVistosStore(contexto.applicationContext))
+    val obtenerAvisosCaso = ObtenerAvisosUseCase(avisosRepository)
+    val marcarMantenimientoVistoCaso = MarcarMantenimientoVistoUseCase(avisosRepository)
+    val omitirVersionCaso = OmitirVersionUseCase(avisosRepository)
+
     // Solicitudes dentro de la app y sus avisos
     val solicitudRepository: SolicitudRepository = SolicitudRepositoryImpl(cliente.solicitudApi)
     val enviarSolicitudCaso = EnviarSolicitudUseCase(solicitudRepository)
@@ -98,6 +121,23 @@ class AppContainer(contexto: Context) {
     val obtenerResumenSolicitudesCaso = ObtenerResumenSolicitudesUseCase(solicitudRepository)
     val marcarSolicitudesVistasCaso = MarcarSolicitudesVistasUseCase(solicitudRepository)
     val resumenSolicitudes = ResumenSolicitudesStore(obtenerResumenSolicitudesCaso)
+
+    // Chat de cada solicitud
+    val mensajeRepository: MensajeRepository = MensajeRepositoryImpl(cliente.solicitudApi)
+    val obtenerMensajesCaso = ObtenerMensajesUseCase(mensajeRepository)
+    val enviarMensajeCaso = EnviarMensajeUseCase(mensajeRepository)
+    val compartirWhatsappCaso = CompartirWhatsappUseCase(mensajeRepository)
+
+    // Olvidé mi contraseña
+    val recuperarRepository: RecuperarRepository = RecuperarRepositoryImpl(cliente.authApi)
+    val pedirCodigoCaso = PedirCodigoUseCase(recuperarRepository)
+    val restablecerContrasenaCaso = RestablecerContrasenaUseCase(recuperarRepository)
+    val recuperarViewModelFactory: ViewModelProvider.Factory =
+        fabricaVm { RecuperarViewModel(pedirCodigoCaso, restablecerContrasenaCaso) }
+
+    fun chatViewModelFactory(solicitudId: String): ViewModelProvider.Factory = fabricaVm {
+        ChatViewModel(solicitudId, obtenerSolicitudesCaso, obtenerMensajesCaso, enviarMensajeCaso, compartirWhatsappCaso)
+    }
     val avisosSolicitudesStore = AvisosSolicitudesStore(contexto.applicationContext)
     val notificadorSolicitudes = NotificadorSolicitudes(contexto.applicationContext)
     val programadorAvisos = ProgramadorAvisos(contexto.applicationContext)

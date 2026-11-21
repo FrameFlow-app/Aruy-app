@@ -40,17 +40,31 @@ data class Solicitud(
     val fechaActualizacion: String?,
     /** true si todavía no la viste. */
     val sinVer: Boolean,
-    val contraparte: ContraparteSolicitud
-)
+    val contraparte: ContraparteSolicitud,
+    /** true si el prestador ya compartió su WhatsApp en el chat. */
+    val whatsappCompartido: Boolean = false,
+    val mensajesSinLeer: Int = 0,
+    val ultimoMensaje: UltimoMensaje? = null
+) {
+    /** Se puede escribir en el chat mientras la solicitud no esté rechazada ni cancelada. */
+    val chatAbierto: Boolean get() = estado != EstadoSolicitud.RECHAZADA && estado != EstadoSolicitud.CANCELADA
+
+    /** Pendiente o aceptada: la que sigue viva con esta persona. */
+    val activa: Boolean get() = estado == EstadoSolicitud.PENDIENTE || estado == EstadoSolicitud.ACEPTADA
+}
+
+data class UltimoMensaje(val texto: String, val fecha: String?)
 
 /** Lo que cambió desde la última vez que se miró: sirve para el numerito y las notificaciones. */
 data class ResumenSolicitudes(
     val recibidasNuevas: Int = 0,
     val recibidasPendientes: Int = 0,
-    val enviadasNovedades: Int = 0
+    val enviadasNovedades: Int = 0,
+    /** Mensajes de chat que todavía no leíste (en todas tus solicitudes). */
+    val mensajesSinLeer: Int = 0
 ) {
     /** Cuántas cosas nuevas hay en total. */
-    val nuevas: Int get() = recibidasNuevas + enviadasNovedades
+    val nuevas: Int get() = recibidasNuevas + enviadasNovedades + mensajesSinLeer
 
     companion object {
         val VACIO = ResumenSolicitudes()

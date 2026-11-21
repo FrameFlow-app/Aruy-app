@@ -20,11 +20,15 @@ const TRANSICIONES = {
   contratante: { PENDIENTE: ['CANCELADA'], ACEPTADA: ['CANCELADA'] },
 };
 
+// $2 es siempre el usuario que consulta (para contar los mensajes de la otra persona que no ha leido)
 const COLUMNAS_LISTA = `sol.id, sol.servicio_id, sol.estado, sol.mensaje, sol.respuesta, sol.fecha_creacion,
-  sol.fecha_actualizacion, sol.visto_prestador, sol.visto_contratante, s.titulo AS servicio_titulo`;
+  sol.fecha_actualizacion, sol.visto_prestador, sol.visto_contratante, sol.whatsapp_compartido, s.titulo AS servicio_titulo,
+  (SELECT COUNT(*) FROM mensajes m WHERE m.solicitud_id = sol.id AND m.autor_id <> $2 AND m.leido = false)::int AS mensajes_sin_leer,
+  (SELECT m.texto FROM mensajes m WHERE m.solicitud_id = sol.id ORDER BY m.fecha_creacion DESC LIMIT 1) AS ultimo_mensaje_texto,
+  (SELECT m.fecha_creacion FROM mensajes m WHERE m.solicitud_id = sol.id ORDER BY m.fecha_creacion DESC LIMIT 1) AS ultimo_mensaje_fecha`;
 
 function aSolicitud(f, tipo) {
-  const aceptada = f.estado === 'ACEPTADA';
+  const compartido = f.whatsapp_compartido === true;
   return {
     id: String(f.id),
     servicio_id: f.servicio_id ? String(f.servicio_id) : null,
@@ -35,16 +39,20 @@ function aSolicitud(f, tipo) {
     fecha_creacion: f.fecha_creacion,
     fecha_actualizacion: f.fecha_actualizacion,
     sin_ver: tipo === 'recibidas' ? f.visto_prestador === false : f.visto_contratante === false,
+    whatsapp_compartido: compartido,
+    mensajes_sin_leer: Number(f.mensajes_sin_leer || 0),
+    ultimo_mensaje: f.ultimo_mensaje_texto ? { texto: f.ultimo_mensaje_texto, fecha: f.ultimo_mensaje_fecha } : null,
     contraparte: {
       nombre: f.contraparte_nombre ?? 'Cuenta eliminada',
       foto_perfil: urlPublica(f.contraparte_foto ?? null),
-      // El telefono de la otra persona se comparte solo cuando la solicitud esta ACEPTADA
-      telefono: aceptada ? (f.contraparte_telefono ?? null) : null,
+      // El telefono del prestador solo le llega al contratante cuando el prestador comparte su WhatsApp en el chat.
+      // El del contratante le llega al prestador cuando la solicitud esta ACEPTADA.
+      telefono: (tipo === 'enviadas' ? compartido : f.estado === 'ACEPTADA') ? (f.contraparte_telefono ?? null) : null,
     },
   };
 }
 
-const COLUMNAS_FILA = 'id, servicio_id, estado, mensaje, respuesta, fecha_creacion, fecha_actualizacion, visto_prestador, visto_contratante';
+const COLUMNAS_FILA = 'id, servicio_id, estado, mensaje, respuesta, fecha_creacion, fecha_actualizacion, visto_prestador, visto_contratante, whatsapp_compartido';
 
 // Enviar una solicitud: cualquier persona con cuenta, menos para su propio servicio
 router.post('/', async (req, res) => {
@@ -108,10 +116,23 @@ router.get('/resumen', async (req, res) => {
       [req.usuario.id, perfilId]
     );
     const x = r.rows[0] || {};
+    // Mensajes de la otra persona que no he leido (si la tabla aun no existe, no se tumba el resumen)
+    let mensajesSinLeer = 0;
+    try {
+      const m = await pool.query(
+        `SELECT COUNT(*)::int AS n FROM mensajes m JOIN solicitudes sol ON sol.id = m.solicitud_id
+         WHERE m.autor_id <> $1 AND m.leido = false AND (sol.contratante_id = $1 OR sol.perfil_prestador_id = $2)`,
+        [req.usuario.id, perfilId]
+      );
+      mensajesSinLeer = Number(m.rows[0] ? m.rows[0].n : 0);
+    } catch (e) {
+      registrarError(e);
+    }
     res.json({
       recibidas_nuevas: Number(x.recibidas_nuevas || 0),
       recibidas_pendientes: Number(x.recibidas_pendientes || 0),
       enviadas_novedades: Number(x.enviadas_novedades || 0),
+      mensajes_sin_leer: mensajesSinLeer,
     });
   } catch (e) {
     registrarError(e);
@@ -158,7 +179,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN usuarios u ON u.id = p.usuario_id
          WHERE sol.contratante_id = $1
          ORDER BY sol.fecha_creacion DESC LIMIT 100`,
-        [req.usuario.id]
+        [req.usuario.id, req.usuario.id]
       );
     } else {
       const perfil = await pool.query('SELECT id FROM perfiles_prestadores WHERE usuario_id = $1', [req.usuario.id]);
@@ -170,7 +191,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN usuarios u ON u.id = sol.contratante_id
          WHERE sol.perfil_prestador_id = $1
          ORDER BY sol.fecha_creacion DESC LIMIT 100`,
-        [perfil.rows[0].id]
+        [perfil.rows[0].id, req.usuario.id]
       );
     }
     res.json(r.rows.map((f) => aSolicitud(f, tipo)));

@@ -57,7 +57,7 @@ fun SplashScreen(estado: EstadoSesion, onContinuar: () -> Unit) {
                 modifier = Modifier.padding(top = 24.dp)
             )
             Text(
-                "Encuentra a quien necesitas, cerca de ti.",
+                "Ofrece tu trabajo. Encuentra tu cliente.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

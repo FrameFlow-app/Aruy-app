@@ -32,7 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -233,6 +238,7 @@ fun EncabezadoSaludo(
     fotoUrl: String?,
     subtitulo: String,
     modifier: Modifier = Modifier,
+    onAvatar: (() -> Unit)? = null,
     accion: (@Composable () -> Unit)? = null
 ) {
     Row(
@@ -240,7 +246,21 @@ fun EncabezadoSaludo(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacios.m)
     ) {
-        AruyAvatar(nombre = nombre, tamano = 52.dp, fotoUrl = fotoUrl)
+        val avatar = Modifier.size(52.dp)
+        if (onAvatar == null) {
+            AruyAvatar(nombre = nombre, tamano = 52.dp, fotoUrl = fotoUrl)
+        } else {
+            Box(
+                avatar
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onAvatar)
+                    .clearAndSetSemantics {
+                        contentDescription = "Abrir menú de tu cuenta"
+                        role = Role.Button
+                        onClick { onAvatar(); true }
+                    }
+            ) { AruyAvatar(nombre = nombre, tamano = 52.dp, fotoUrl = fotoUrl) }
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 "Hola, $nombre",
