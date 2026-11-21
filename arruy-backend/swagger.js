@@ -36,6 +36,7 @@ const tags = [
   { name: 'Perfiles', description: 'Perfil del prestador (oficio y zona)' },
   { name: 'Servicios', description: 'Catálogo de servicios y su publicación' },
   { name: 'Fotos', description: 'Etiquetas de las fotos del portafolio (IA)' },
+  { name: 'Solicitudes', description: 'Pedirle un servicio a un prestador, dentro de la app' },
 ];
 
 const ref = (nombre) => ({ $ref: `#/components/schemas/${nombre}` });
@@ -61,7 +62,7 @@ const paths = {
       summary: 'Crear una cuenta',
       description:
         'Si el rol es `PRESTADOR` también se crea su perfil, por eso son obligatorios `oficio_principal` y `zona_cobertura`. ' +
-        'Para `CONTRATANTE` se ignoran. Límite: 30 registros cada 15 minutos por red.',
+        'Para `CONTRATANTE` se ignoran. Solo se aceptan **mayores de 18 años** (`fecha_nacimiento`). Límite: 30 registros cada 15 minutos por red.',
       requestBody: {
         required: true,
         content: {
@@ -73,6 +74,7 @@ const paths = {
                 value: {
                   nombre: 'PRUEBA Prestador',
                   telefono: '0991234567',
+                  fecha_nacimiento: '1995-06-15',
                   email: 'prestador@example.com',
                   password: 'ClaveSegura123',
                   rol: 'PRESTADOR',
@@ -86,6 +88,7 @@ const paths = {
                 value: {
                   nombre: 'PRUEBA Cliente',
                   telefono: '0997654321',
+                  fecha_nacimiento: '1998-03-25',
                   email: 'cliente@example.com',
                   password: 'ClaveSegura123',
                   rol: 'CONTRATANTE',
@@ -340,13 +343,45 @@ const components = {
     },
   },
   schemas: {
+    SolicitudNueva: {
+      type: 'object',
+      required: ['servicio_id', 'mensaje'],
+      properties: {
+        servicio_id: { type: 'string', format: 'uuid' },
+        mensaje: { type: 'string', minLength: 5, maxLength: 500 },
+      },
+    },
+    Solicitud: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        servicio_id: { type: 'string', format: 'uuid', nullable: true },
+        servicio_titulo: { type: 'string', nullable: true },
+        estado: { type: 'string', enum: ['PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'CANCELADA', 'COMPLETADA'] },
+        mensaje: { type: 'string' },
+        respuesta: { type: 'string', nullable: true },
+        fecha_creacion: { type: 'string', format: 'date-time' },
+        fecha_actualizacion: { type: 'string', format: 'date-time' },
+        sin_ver: { type: 'boolean', description: 'true si todavía no la viste' },
+        contraparte: {
+          type: 'object',
+          description: 'La otra persona: el prestador en las enviadas, el cliente en las recibidas',
+          properties: {
+            nombre: { type: 'string' },
+            foto_perfil: { type: 'string', nullable: true },
+            telefono: { type: 'string', nullable: true, description: 'Solo cuando la solicitud está ACEPTADA' },
+          },
+        },
+      },
+    },
     Error: { type: 'object', properties: { error: { type: 'string', example: 'Id invalido' } } },
     Registro: {
       type: 'object',
-      required: ['nombre', 'telefono', 'email', 'password', 'rol'],
+      required: ['nombre', 'telefono', 'email', 'password', 'rol', 'fecha_nacimiento'],
       properties: {
         nombre: { type: 'string', maxLength: 100 },
         telefono: { type: 'string', maxLength: 20, description: 'Debe ser único' },
+        fecha_nacimiento: { type: 'string', format: 'date', example: '1995-06-15', description: 'Formato AAAA-MM-DD. Aruy es solo para mayores de 18 años' },
         email: { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 8, description: 'Mínimo 8 caracteres' },
         rol: { type: 'string', enum: ['PRESTADOR', 'CONTRATANTE'] },
@@ -624,6 +659,111 @@ paths['/usuarios/yo'] = {
       'No se puede deshacer. El token ya emitido sigue siendo válido hasta que venza, pero no sirve para nada: la cuenta y sus datos ya no existen.',
     security: conToken,
     responses: { 204: sinContenido('Cuenta eliminada'), 401: e401 },
+  },
+};
+
+paths['/auth/renovar'] = {
+  post: {
+    tags: ['Autenticación'],
+    summary: 'Renovar la sesión',
+    description: 'Cambia un token vigente por uno nuevo de 30 días (misma cuenta). La app lo pide al abrirse cuando al token le quedan pocos días.',
+    security: conToken,
+    responses: {
+      200: { description: 'Token nuevo, usuario y perfil de prestador', content: json(ref('RespuestaAuth')) },
+      401: e401,
+    },
+  },
+};
+
+paths['/solicitudes'] = {
+  get: {
+    tags: ['Solicitudes'],
+    summary: 'Mis solicitudes',
+    description: '`tipo=enviadas`: las que yo hice. `tipo=recibidas`: las que me hicieron como prestador. El teléfono de la otra persona solo aparece cuando la solicitud está ACEPTADA.',
+    security: conToken,
+    parameters: [{ name: 'tipo', in: 'query', required: true, schema: { type: 'string', enum: ['enviadas', 'recibidas'] } }],
+    responses: {
+      200: { description: 'Lista (máximo 100, la más nueva primero)', content: json({ type: 'array', items: ref('Solicitud') }) },
+      400: errorRespuesta('tipo no válido'),
+      401: e401,
+    },
+  },
+  post: {
+    tags: ['Solicitudes'],
+    summary: 'Enviar una solicitud a un servicio',
+    description: 'Cualquier persona con cuenta, menos para su propio servicio. Una sola solicitud pendiente por servicio, máximo 15 pendientes y 30 envíos por hora.',
+    security: conToken,
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: ref('SolicitudNueva'), example: { servicio_id: '00000000-0000-4000-8000-000000000000', mensaje: 'Hola, necesito arreglar una tubería el sábado' } } },
+    },
+    responses: {
+      201: { description: 'Solicitud enviada (PENDIENTE)', content: json(ref('Solicitud')) },
+      400: errorRespuesta('Datos inválidos'),
+      401: e401,
+      403: errorRespuesta('Es tu propio servicio'),
+      404: errorRespuesta('Servicio no encontrado'),
+      409: errorRespuesta('Ya hay una pendiente, el servicio no recibe solicitudes o tienes demasiadas pendientes'),
+    },
+  },
+};
+
+paths['/solicitudes/resumen'] = {
+  get: {
+    tags: ['Solicitudes'],
+    summary: 'Cuántas solicitudes nuevas tengo',
+    description: 'Lo usa la app para el numerito y las notificaciones.',
+    security: conToken,
+    responses: {
+      200: {
+        description: 'Contadores',
+        content: json({
+          type: 'object',
+          properties: {
+            recibidas_nuevas: { type: 'integer', description: 'Solicitudes que me hicieron y todavía no vi' },
+            recibidas_pendientes: { type: 'integer', description: 'Solicitudes que me hicieron y aún no respondí' },
+            enviadas_novedades: { type: 'integer', description: 'Solicitudes mías que cambiaron y todavía no vi' },
+          },
+        }),
+      },
+      401: e401,
+    },
+  },
+};
+
+paths['/solicitudes/vistas'] = {
+  post: {
+    tags: ['Solicitudes'],
+    summary: 'Marcar como vistas las solicitudes de una bandeja',
+    security: conToken,
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['tipo'], properties: { tipo: { type: 'string', enum: ['enviadas', 'recibidas'] } } } } } },
+    responses: {
+      200: { description: 'Cuántas se marcaron', content: json({ type: 'object', properties: { marcadas: { type: 'integer' } } }) },
+      400: errorRespuesta('tipo no válido'),
+      401: e401,
+    },
+  },
+};
+
+paths['/solicitudes/{id}'] = {
+  patch: {
+    tags: ['Solicitudes'],
+    summary: 'Cambiar el estado de una solicitud',
+    description:
+      'El prestador pasa PENDIENTE → ACEPTADA o RECHAZADA, y ACEPTADA → COMPLETADA o CANCELADA. Quien la envió puede cancelarla (PENDIENTE o ACEPTADA → CANCELADA). `respuesta` (opcional, máx. 300) es un mensaje para la otra persona.',
+    security: conToken,
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: { type: 'object', required: ['estado'], properties: { estado: { type: 'string', enum: ['ACEPTADA', 'RECHAZADA', 'CANCELADA', 'COMPLETADA'] }, respuesta: { type: 'string', maxLength: 300 } } } } },
+    },
+    responses: {
+      200: { description: 'Solicitud actualizada', content: json(ref('Solicitud')) },
+      400: errorRespuesta('Datos inválidos'),
+      401: e401,
+      404: errorRespuesta('Solicitud no encontrada (o no es tuya)'),
+      409: errorRespuesta('Ese cambio no es posible desde el estado actual'),
+    },
   },
 };
 

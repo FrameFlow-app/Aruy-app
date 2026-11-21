@@ -20,7 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,8 +50,8 @@ fun LoginScreen(
     onVolver: () -> Unit,
     onCrearCuenta: () -> Unit
 ) {
-    val formulario by viewModel.formulario.collectAsState()
-    val aviso by viewModel.aviso.collectAsState()
+    val formulario by viewModel.formulario.collectAsStateWithLifecycle()
+    val aviso by viewModel.aviso.collectAsStateWithLifecycle()
 
     var correo by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }

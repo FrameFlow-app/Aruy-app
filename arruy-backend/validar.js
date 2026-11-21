@@ -28,6 +28,33 @@ function limpiarEtiquetas(lista) {
   return [...new Set(lista.map((e) => e.trim()))];
 }
 
+// "LIMPIEZA DE CASAS" o "limpieza de casas" -> "Limpieza de casas": inicial en mayuscula y el resto en minuscula
+// (tambien con acentos y la enie). Los espacios repetidos se juntan.
+function normalizarTitulo(titulo) {
+  const limpio = String(titulo ?? '').trim().replace(/\s+/g, ' ');
+  if (limpio === '') return limpio;
+  const minusculas = limpio.toLocaleLowerCase('es');
+  return minusculas.charAt(0).toLocaleUpperCase('es') + minusculas.slice(1);
+}
+
+// Edad en anios cumplidos a partir de una fecha AAAA-MM-DD (en UTC). Devuelve null si el texto no es una fecha
+// real (por ejemplo 2000-02-30). Es negativa si la fecha es futura.
+function edadEnAnios(texto, hoy = new Date()) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(texto ?? '').trim());
+  if (!m) return null;
+  const anio = Number(m[1]);
+  const mes = Number(m[2]);
+  const dia = Number(m[3]);
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  if (fecha.getUTCFullYear() !== anio || fecha.getUTCMonth() !== mes - 1 || fecha.getUTCDate() !== dia) return null;
+  let edad = hoy.getUTCFullYear() - anio;
+  const hm = hoy.getUTCMonth() + 1;
+  if (hm < mes || (hm === mes && hoy.getUTCDate() < dia)) edad -= 1;
+  return edad;
+}
+
+const EDAD_MINIMA = 18;
+
 module.exports = {
-  esUuid, textoValido, esEmail, esUrlHttps, passwordValida, limpiarEtiquetas, CATEGORIAS, ROLES,
+  edadEnAnios, EDAD_MINIMA, normalizarTitulo, esUuid, textoValido, esEmail, esUrlHttps, passwordValida, limpiarEtiquetas, CATEGORIAS, ROLES,
 };

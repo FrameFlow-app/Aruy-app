@@ -1,13 +1,13 @@
 package ec.edu.puce.aruy.data.remote.api
 
+import retrofit2.http.POST
+import okhttp3.RequestBody
 import ec.edu.puce.aruy.data.remote.dto.EditarUsuarioRequest
 import ec.edu.puce.aruy.data.remote.dto.UsuarioDto
-import okhttp3.RequestBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
-import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface UsuarioApi {

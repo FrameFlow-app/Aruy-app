@@ -1,5 +1,12 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import androidx.compose.ui.Alignment
+import ec.edu.puce.aruy.ui.components.BotonContorno
+import androidx.compose.material3.BadgedBox
+import ec.edu.puce.aruy.ui.components.TipoPastilla
+import ec.edu.puce.aruy.ui.components.Pastilla
+import ec.edu.puce.aruy.ui.components.BotonTexto
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,10 +33,9 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,11 +76,15 @@ fun InicioScreen(
     onVerTodos: (OrdenCatalogo?) -> Unit,
     onServicio: (String) -> Unit,
     onCrearCuenta: () -> Unit,
-    fotoUrl: String? = null
+    fotoUrl: String? = null,
+    puedeOfrecer: Boolean = false,
+    onOfrecer: () -> Unit = {},
+    solicitudesNuevas: Int = 0,
+    onSolicitudes: () -> Unit = {}
 ) {
-    val estado by catalogo.catalogo.collectAsState()
-    val vistosIds by actividad.vistosIds.collectAsState()
-    val favoritosIds by actividad.favoritosIds.collectAsState()
+    val estado by catalogo.catalogo.collectAsStateWithLifecycle()
+    val vistosIds by actividad.vistosIds.collectAsStateWithLifecycle()
+    val favoritosIds by actividad.favoritosIds.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { catalogo.cargarSiHaceFalta() }
 
@@ -89,12 +99,25 @@ fun InicioScreen(
                 fotoUrl = fotoUrl,
                 subtitulo = "¿Qué servicio necesitas hoy?",
                 accion = {
-                    BotonCircular(
-                        icono = Icons.Filled.Refresh,
-                        descripcion = "Actualizar",
-                        onClick = catalogo::recargar,
-                        variante = VarianteCircular.TONAL
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), verticalAlignment = Alignment.CenterVertically) {
+                        if (!invitado) {
+                            // La campanita: lleva a Mis solicitudes y muestra cuántas cosas nuevas hay
+                            BadgedBox(badge = { if (solicitudesNuevas > 0) Pastilla("$solicitudesNuevas", tipo = TipoPastilla.ERROR) }) {
+                                BotonCircular(
+                                    icono = Icons.Filled.Notifications,
+                                    descripcion = if (solicitudesNuevas > 0) "Mis solicitudes: $solicitudesNuevas sin ver" else "Mis solicitudes",
+                                    onClick = onSolicitudes,
+                                    variante = VarianteCircular.TONAL
+                                )
+                            }
+                        }
+                        BotonCircular(
+                            icono = Icons.Filled.Refresh,
+                            descripcion = "Actualizar",
+                            onClick = catalogo::recargar,
+                            variante = VarianteCircular.TONAL
+                        )
+                    }
                 }
             )
         }
@@ -108,6 +131,19 @@ fun InicioScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     BotonRelleno("Crear cuenta", onCrearCuenta, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
+        }
+
+        if (puedeOfrecer) {
+            item {
+                AruyTarjeta(tipo = TipoTarjeta.CONTORNO, modifier = Modifier.fillMaxWidth()) {
+                    Text("¿Haces algún oficio?", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Ofrécelo en Aruy con tu misma cuenta y consigue clientes.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    BotonContorno("Ofrecer mis servicios", onOfrecer, modifier = Modifier.padding(top = Espacios.s))
                 }
             }
         }
@@ -179,7 +215,7 @@ private fun LazyListScope.contenido(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(Espacios.s)) {
                 TituloSeccion("Disponibles ahora", accion = {
-                    TextButton(onClick = { onVerTodos(null) }) { Text("Ver todos") }
+                    BotonTexto("Ver todos", onClick = { onVerTodos(null) })
                 })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(Espacios.m)) {
                     items(disponibles, key = { it.id }) { item ->
@@ -197,7 +233,7 @@ private fun LazyListScope.contenido(
 
     item {
         TituloSeccion("Mejor valorados", accion = {
-            TextButton(onClick = { onVerTodos(OrdenCatalogo.MEJOR_CALIFICACION) }) { Text("Ver todos") }
+            BotonTexto("Ver todos", onClick = { onVerTodos(OrdenCatalogo.MEJOR_CALIFICACION) })
         })
     }
     items(mejores.chunked(2), key = { par -> "mejor-" + par.joinToString("-") { it.id } }) { par ->

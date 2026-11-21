@@ -25,7 +25,7 @@ API REST (Node.js + Express, en Render)
    └──► Supabase Storage: fotos de los trabajos y de perfil (solo WebP)
 ```
 
-- **App:** Kotlin, Jetpack Compose (Material 3), arquitectura MVVM, Room (guardados, bloqueados y reportes en el teléfono), Retrofit + OkHttp, DataStore, Coil, ML Kit Image Labeling, corrutinas.
+- **App:** Kotlin, Jetpack Compose (Material 3), **Clean Architecture + MVVM** (capas `domain`, `data` y `ui`; el dominio es Kotlin puro con las **interfaces de los repositorios** y los **casos de uso**; los repositorios `*Impl` viven en `data`), flujo unidireccional de datos con `StateFlow`, Room (guardados, bloqueados y reportes en el teléfono), Retrofit + OkHttp, DataStore, Coil, ML Kit Image Labeling, corrutinas.
 - **Servidor:** carpeta `arruy-backend`. Node.js 20.9 o superior, Express 5, `pg`, `bcryptjs`, `jsonwebtoken`, `helmet`, `express-rate-limit`, `sharp` (convierte las fotos a WebP) y Swagger en `/docs`.
 - **Base de datos:** Neon (PostgreSQL). **Fotos:** Supabase Storage (bucket público `aruy-portafolio`; la base solo guarda la ruta).
 
@@ -33,6 +33,11 @@ API REST (Node.js + Express, en Render)
 
 - **Una sola cuenta con el mismo correo.** Cualquier persona con cuenta busca, contacta y califica. Quien ofrece servicios además tiene Panel, Servicios y Portafolio, y también puede explorar el catálogo (pestaña *Explorar*).
 - **Catálogo y búsqueda:** categorías, filtros, detalle del servicio, perfil público del prestador, contacto por WhatsApp y opiniones de 1 a 5.
+- **Solicitudes dentro de la app:** quien busca un servicio toca *Enviar solicitud en Aruy* y escribe qué necesita; el prestador la **acepta o rechaza** (con un mensaje opcional) y puede marcarla como completada. El teléfono de cada persona solo se comparte con la otra **cuando la solicitud se acepta**. Quien la envió puede cancelarla.
+- **Avisos:** numerito en el Inicio, el Perfil y el Panel, aviso en pantalla cuando llega algo nuevo y **notificación del sistema** aunque la app esté cerrada (consulta ligera cada 15 minutos con WorkManager, sin Firebase). El permiso de notificaciones se pide cuando sirve de algo, no al abrir la app.
+- **Sesión que no se pierde:** el token dura 30 días y se **renueva solo** al abrir la app cuando le quedan menos de 20; si algún día se cierra la sesión, la app dice por qué y cuándo.
+- **"Quiero ofrecer servicios":** quien se registró como contratante puede pasar a prestador **con la misma cuenta** (tarjeta en el Inicio y en el Perfil), sin crear otra.
+- **Foto de perfil:** se elige al crear la cuenta (opcional) o desde *Editar perfil*; el servidor la deja en WebP de 512 px y le quita la ubicación.
 - **Prestador:** publicar, editar, pausar y borrar servicios (máximo 2 servicios por prestador); portafolio de hasta 3 fotos por servicio; perfil (oficio, zona, años de experiencia); interruptor "Recibiendo solicitudes"; Aruy Pro (suscripción **simulada**, no se cobra nada).
 - **Cuenta y privacidad:** sesión que se conserva al cerrar la app (token cifrado con Android Keystore), ajustes de tema y tamaño de texto, eliminar la cuenta (borra de verdad los datos y las fotos) y páginas de privacidad en `docs/`.
 
@@ -60,6 +65,8 @@ npm test                 # pruebas automáticas
 ```
 
 Documentación interactiva de la API: `http://localhost:3000/docs` (en la nube: https://aruy-api.onrender.com/docs).
+
+Base de datos: al encender, el servidor **prepara solo** lo que falte (`esquema.js`, todo con `IF NOT EXISTS`, sin borrar nada): la columna `usuarios.fecha_nacimiento` (Aruy es solo para mayores de 18 años) y la tabla `solicitudes`. Los mismos comandos están en `arruy-backend/db/*.sql` por si prefieren ejecutarlos a mano en el SQL Editor de Neon.
 
 Variables del archivo `.env` (nunca se sube a GitHub):
 
@@ -94,8 +101,8 @@ El archivo queda en `app\build\outputs\apk\celular\debug\app-celular-debug.apk`.
 
 ### Pruebas
 
-- **Servidor:** `npm test` en `arruy-backend` (20 pruebas: límites por cuenta, memoria de imágenes, sesión de 30 días, cuenta única, calificaciones, mantenimiento de Supabase, apagado ordenado).
-- **App:** `.\gradlew.bat testCelularDebugUnitTest` (unas 110 pruebas unitarias, entre ellas 20 de la validación de fotos).
+- **Servidor:** `npm test` en `arruy-backend` (49 pruebas: límites por cuenta, memoria de imágenes, sesión de 30 días, cuenta única, calificaciones, registro con mayoría de edad, solicitudes (enviar, responder, privacidad del teléfono), renovación de la sesión, mantenimiento de Supabase, apagado ordenado).
+- **App:** `.\gradlew.bat testCelularDebugUnitTest` (unas 190 pruebas unitarias: validación de fotos, casos de uso con repositorios falsos, fecha de nacimiento, foto de perfil y más).
 
 ## API principal
 
@@ -118,6 +125,7 @@ Todo lo marcado con *token* necesita el encabezado `Authorization: Bearer <token
 
 ## Seguridad y privacidad
 
+- Solo se registran **mayores de 18 años** (la app y el servidor lo comprueban).
 - Contraseñas con `bcrypt`; sesiones con JWT (30 días); el rol viaja dentro del token.
 - Límites de velocidad por cuenta, por usuario y por red (en una misma red muchas personas no se bloquean entre sí).
 - Las fotos se convierten a WebP, se les quita la información de ubicación (EXIF) y no pasan de 500 KB.
@@ -132,8 +140,8 @@ Todo lo marcado con *token* necesita el encabezado `Authorization: Bearer <token
 
 ## Limitaciones conocidas
 
-- La foto de perfil ya la acepta el servidor, pero **la app todavía no tiene el botón** para subirla.
-- Un contratante ya puede pasar a prestador con la misma cuenta en el servidor, pero **la pantalla "Quiero ofrecer servicios" de la app no está hecha**.
+- Falta **recuperar la contraseña** (el servidor todavía no envía correos).
+- Las notificaciones llegan con un retraso de hasta ~15 minutos (no son *push* en tiempo real: eso pediría Firebase).
 - La validación de fotos es un filtro de confianza, no una verificación del trabajo.
 - Las suscripciones de Aruy Pro son simuladas.
 

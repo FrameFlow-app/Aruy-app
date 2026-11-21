@@ -21,12 +21,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ec.edu.puce.aruy.ui.theme.Espacios
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.ui.components.AruyHoja
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
 import ec.edu.puce.aruy.ui.components.BotonQuitarFoto
@@ -61,7 +61,7 @@ fun PortafolioScreen(
     viewModel: MisServiciosViewModel,
     onPublicarServicio: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var elegirServicio by rememberSaveable { mutableStateOf(false) }
     var destino by rememberSaveable { mutableStateOf<String?>(null) }
@@ -156,7 +156,7 @@ fun PortafolioScreen(
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 
     if (elegirServicio) {

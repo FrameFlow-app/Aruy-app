@@ -1,5 +1,7 @@
 package ec.edu.puce.aruy.ui.screen.perfil
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.theme.Superposiciones
 import ec.edu.puce.aruy.ui.components.AruyTarjeta
@@ -61,7 +63,7 @@ import ec.edu.puce.aruy.ui.viewmodel.EditarPerfilViewModel
 /** Editar nombre y celular de la cuenta y, si eres prestador, tu perfil público (`editarPerfil` en `perfil.js`). */
 @Composable
 fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var hojaFoto by rememberSaveable { mutableStateOf(false) }
     val acciones = rememberAccionesFoto(viewModel::elegirFoto)
@@ -148,7 +150,7 @@ fun EditarPerfilScreen(viewModel: EditarPerfilViewModel, onVolver: () -> Unit) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AvisoHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     if (hojaFoto) HojaFotoPerfil(acciones) { hojaFoto = false }
 }

@@ -17,6 +17,7 @@ import ec.edu.puce.aruy.domain.model.Suscripcion
 import ec.edu.puce.aruy.domain.model.TipoPlan
 import ec.edu.puce.aruy.domain.validation.Validaciones
 import ec.edu.puce.aruy.domain.validation.ValidacionesPerfil
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.ui.theme.ModoTema
 import ec.edu.puce.aruy.ui.theme.TamanoTexto
 import ec.edu.puce.aruy.util.ConversorWebp
@@ -65,8 +66,8 @@ class EditarPerfilViewModel(
     private val _ui = MutableStateFlow(EditarPerfilUi())
     val ui: StateFlow<EditarPerfilUi> = _ui.asStateFlow()
 
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     init {
         cargar()
@@ -93,12 +94,12 @@ class EditarPerfilViewModel(
                         anios = perfil?.aniosExperiencia?.toString().orEmpty()
                     )
                 }
-                if (prestador && perfil == null) _mensajes.tryEmit("No pudimos cargar tu perfil de prestador.")
+                if (prestador && perfil == null) _mensajes.tryEmit(Aviso.error("No pudimos cargar tu perfil de prestador."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(cargando = false) }
-                _mensajes.tryEmit(ApiErrorHandler.obtenerMensaje(e))
+                _mensajes.tryEmit(Aviso.error(ApiErrorHandler.obtenerMensaje(e)))
             }
         }
     }
@@ -123,15 +124,15 @@ class EditarPerfilViewModel(
                 val usuario = repositorio.subirMiFoto(imagen.webp)
                 sesion.actualizarUsuario(usuario)
                 _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
-                _mensajes.tryEmit("Foto de perfil actualizada.")
+                _mensajes.tryEmit(Aviso.exito("Foto de perfil actualizada."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ErrorFoto) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(e.message.orEmpty())
+                _mensajes.tryEmit(Aviso.error(e.message.orEmpty()))
             } catch (e: Exception) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(MensajesPerfil.alSubirFoto(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alSubirFoto(e)))
             } finally {
                 if (desdeCamara) conversor.borrarTemporal(uri)
             }
@@ -146,12 +147,12 @@ class EditarPerfilViewModel(
                 val usuario = repositorio.quitarMiFoto()
                 sesion.actualizarUsuario(usuario)
                 _ui.update { it.copy(subiendoFoto = false, fotoPerfil = usuario.fotoPerfil) }
-                _mensajes.tryEmit("Quitaste tu foto de perfil.")
+                _mensajes.tryEmit(Aviso.exito("Quitaste tu foto de perfil."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(subiendoFoto = false) }
-                _mensajes.tryEmit(MensajesPerfil.alSubirFoto(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alSubirFoto(e)))
             }
         }
     }
@@ -179,12 +180,12 @@ class EditarPerfilViewModel(
                     repositorio.actualizarMiPerfil(DatosPerfilPrestador(u.oficio, u.zona, u.descripcion, anios.valor))
                 }
                 _ui.update { it.copy(guardando = false, finalizado = true) }
-                _mensajes.tryEmit("Cambios guardados.")
+                _mensajes.tryEmit(Aviso.exito("Cambios guardados."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(guardando = false) }
-                _mensajes.tryEmit(MensajesPerfil.alGuardarPerfil(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.alGuardarPerfil(e)))
             }
         }
     }
@@ -248,8 +249,8 @@ class AruyProViewModel(private val repositorio: SuscripcionRepository) : ViewMod
     private val _ui = MutableStateFlow(ProUi())
     val ui: StateFlow<ProUi> = _ui.asStateFlow()
 
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     init {
         cargar()
@@ -277,12 +278,12 @@ class AruyProViewModel(private val repositorio: SuscripcionRepository) : ViewMod
             try {
                 val nueva = repositorio.suscribirse(plan, _ui.value.renovacionAutomatica)
                 _ui.update { it.copy(procesando = false, suscripcion = nueva) }
-                _mensajes.tryEmit("Aruy Pro activado. Es una suscripción simulada: no se cobró nada.")
+                _mensajes.tryEmit(Aviso.exito("Aruy Pro activado. Es una suscripción simulada: no se cobró nada."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(procesando = false) }
-                _mensajes.tryEmit(MensajesPerfil.enSuscripciones(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.enSuscripciones(e)))
                 // Si ya había una vigente en el servidor, se muestra la real
                 if (e is retrofit2.HttpException && e.code() == 409) cargar()
             }
@@ -297,12 +298,12 @@ class AruyProViewModel(private val repositorio: SuscripcionRepository) : ViewMod
             try {
                 val cancelada = repositorio.cancelar(id)
                 _ui.update { it.copy(procesando = false, suscripcion = cancelada) }
-                _mensajes.tryEmit("Cancelaste tu suscripción.")
+                _mensajes.tryEmit(Aviso.exito("Cancelaste tu suscripción."))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(procesando = false) }
-                _mensajes.tryEmit(MensajesPerfil.enSuscripciones(e))
+                _mensajes.tryEmit(Aviso.error(MensajesPerfil.enSuscripciones(e)))
             }
         }
     }

@@ -1,5 +1,9 @@
 package ec.edu.puce.aruy.domain.validation
 
+import java.time.DateTimeException
+import java.time.LocalDate
+import java.time.Period
+
 /**
  * Validaciones de formularios, portadas de `js/core/util.js` del prototipo.
  * Cada función devuelve el mensaje de error, o null si el valor es válido.
@@ -9,6 +13,8 @@ object Validaciones {
     const val NOMBRE_MAX = 60
     const val PASSWORD_MIN = 8
     const val PASSWORD_MAX_BYTES = 72 // bcrypt solo usa los primeros 72 bytes
+    const val EDAD_MINIMA = 18 // Aruy es solo para mayores de edad
+    private const val EDAD_MAXIMA = 120
 
     private val REGEX_CORREO = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$")
     private val REGEX_CELULAR_LOCAL = Regex("^09\\d{8}$")
@@ -38,6 +44,57 @@ object Validaciones {
         val limpio = normalizarCelular(valor)
         return if (REGEX_CELULAR_LOCAL.matches(limpio) || REGEX_CELULAR_INTERNACIONAL.matches(limpio)) null
         else "Este número no es válido. Escríbelo así: 0998765432 o +593998765432."
+    }
+
+    /** Resultado de leer la fecha de nacimiento: la [fecha] si es válida y mayor de edad, o el [error] que se muestra. */
+    data class FechaNacimiento(val fecha: LocalDate?, val error: String?)
+
+    /** Años de experiencia: es opcional; si se escribe, un número entre 0 y 80. */
+    data class AniosExperiencia(val valor: Int?, val error: String?)
+
+    fun aniosExperiencia(texto: String): AniosExperiencia {
+        val limpio = texto.trim()
+        if (limpio.isEmpty()) return AniosExperiencia(null, null)
+        val numero = limpio.toIntOrNull()
+        return if (numero != null && numero in 0..80) AniosExperiencia(numero, null)
+        else AniosExperiencia(null, "Escribe un número entre 0 y 80, o déjalo vacío.")
+    }
+
+    /** Mientras se escribe, deja solo números y pone las barras: "25032000" -> "25/03/2000". */
+    fun formatearFecha(entrada: String): String {
+        val digitos = entrada.filter { it.isDigit() }.take(8)
+        return buildString {
+            digitos.forEachIndexed { indice, digito ->
+                if (indice == 2 || indice == 4) append('/')
+                append(digito)
+            }
+        }
+    }
+
+    /** Años cumplidos en la fecha [hoy]. */
+    fun edadEn(nacimiento: LocalDate, hoy: LocalDate = LocalDate.now()): Int = Period.between(nacimiento, hoy).years
+
+    /** Lee "día/mes/año" y comprueba que la persona tenga al menos [EDAD_MINIMA] años. */
+    fun fechaNacimiento(texto: String, hoy: LocalDate = LocalDate.now()): FechaNacimiento {
+        val partes = texto.trim().split('/')
+        val dia = partes.getOrNull(0)?.toIntOrNull()
+        val mes = partes.getOrNull(1)?.toIntOrNull()
+        val anio = partes.getOrNull(2)?.toIntOrNull()
+        if (partes.size != 3 || dia == null || mes == null || anio == null || partes[2].length != 4) {
+            return FechaNacimiento(null, "Escribe tu fecha de nacimiento como día/mes/año. Ejemplo: 25/03/2000.")
+        }
+        val fecha = try {
+            LocalDate.of(anio, mes, dia)
+        } catch (e: DateTimeException) {
+            return FechaNacimiento(null, "Esa fecha no existe. Revisa el día, el mes y el año.")
+        }
+        if (fecha.isAfter(hoy) || edadEn(fecha, hoy) > EDAD_MAXIMA) {
+            return FechaNacimiento(null, "Revisa el año de tu fecha de nacimiento.")
+        }
+        if (edadEn(fecha, hoy) < EDAD_MINIMA) {
+            return FechaNacimiento(null, "Aruy es solo para mayores de $EDAD_MINIMA años.")
+        }
+        return FechaNacimiento(fecha, null)
     }
 
     fun password(valor: String): String? = when {

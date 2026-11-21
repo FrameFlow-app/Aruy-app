@@ -1,9 +1,12 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import ec.edu.puce.aruy.domain.usecase.EnviarSolicitudUseCase
+import ec.edu.puce.aruy.data.remote.util.MensajesSolicitud
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ec.edu.puce.aruy.ui.components.Aviso
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
-import ec.edu.puce.aruy.data.repository.CatalogoRepository
+import ec.edu.puce.aruy.domain.repository.CatalogoRepository
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
 import ec.edu.puce.aruy.domain.model.PrestadorPublico
 import ec.edu.puce.aruy.domain.model.ResumenOpiniones
@@ -41,24 +44,46 @@ data class DetalleUi(
     val item: ServicioConPrestador? = null,
     val fotos: List<FotoPortafolio> = emptyList(),
     val opiniones: ResumenOpiniones? = null,
-    val enviandoOpinion: Boolean = false
+    val enviandoOpinion: Boolean = false,
+    val enviandoSolicitud: Boolean = false
 )
 
 class DetalleViewModel(
     private val servicioId: String,
     inicial: ServicioConPrestador?,
-    private val repositorio: CatalogoRepository
+    private val repositorio: CatalogoRepository,
+    private val enviarSolicitudCaso: EnviarSolicitudUseCase
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(DetalleUi(item = inicial, cargando = inicial == null))
     val ui: StateFlow<DetalleUi> = _ui.asStateFlow()
 
     /** Avisos de una sola vez ("Opinión publicada. ¡Gracias!") para el snackbar. */
-    private val _mensajes = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val mensajes: SharedFlow<String> = _mensajes.asSharedFlow()
+    private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
+    val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     init {
         cargar()
+    }
+
+    /** "Pedir este servicio": la solicitud le llega al prestador dentro de Aruy. [alExito] cierra la hoja. */
+    fun enviarSolicitud(mensaje: String, alExito: () -> Unit) {
+        if (_ui.value.enviandoSolicitud) return
+        val nombre = _ui.value.item?.nombrePrestador ?: "el prestador"
+        _ui.update { it.copy(enviandoSolicitud = true) }
+        viewModelScope.launch {
+            try {
+                enviarSolicitudCaso(servicioId, mensaje)
+                _ui.update { it.copy(enviandoSolicitud = false) }
+                _mensajes.tryEmit(Aviso.exito("¡Solicitud enviada! Te avisaremos cuando $nombre responda."))
+                alExito()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update { it.copy(enviandoSolicitud = false) }
+                _mensajes.tryEmit(Aviso.error(MensajesSolicitud.alEnviar(e)))
+            }
+        }
     }
 
     fun cargar() {
@@ -91,13 +116,13 @@ class DetalleViewModel(
                 repositorio.calificar(prestadorId, puntuacion, comentario)
                 val resumen = runCatching { repositorio.opiniones(prestadorId) }.getOrNull()
                 _ui.update { it.copy(enviandoOpinion = false, opiniones = resumen ?: it.opiniones) }
-                _mensajes.tryEmit("Opinión publicada. ¡Gracias!")
+                _mensajes.tryEmit(Aviso.exito("Opinión publicada. ¡Gracias!"))
                 alExito()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _ui.update { it.copy(enviandoOpinion = false) }
-                _mensajes.tryEmit(mensajeDeCalificar(e))
+                _mensajes.tryEmit(Aviso.error(mensajeDeCalificar(e)))
             }
         }
     }

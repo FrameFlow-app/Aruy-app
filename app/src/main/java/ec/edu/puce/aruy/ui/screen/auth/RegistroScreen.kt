@@ -1,5 +1,15 @@
 package ec.edu.puce.aruy.ui.screen.auth
 
+import ec.edu.puce.aruy.ui.viewmodel.FotoElegida
+import ec.edu.puce.aruy.ui.components.rememberAccionesFoto
+import ec.edu.puce.aruy.ui.components.HojaAgregarFoto
+import ec.edu.puce.aruy.ui.components.BotonContorno
+import ec.edu.puce.aruy.ui.components.AruyAvatar
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.foundation.layout.size
+import coil.compose.AsyncImage
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -12,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +44,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,7 +64,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import ec.edu.puce.aruy.data.repository.DatosRegistro
+import ec.edu.puce.aruy.domain.model.DatosRegistro
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.RolUsuario
 import ec.edu.puce.aruy.domain.validation.Validaciones
@@ -76,13 +85,18 @@ fun RegistroScreen(
     onVolver: () -> Unit,
     onIniciarSesion: () -> Unit
 ) {
-    val formulario by viewModel.formulario.collectAsState()
+    val formulario by viewModel.formulario.collectAsStateWithLifecycle()
 
     var paso by rememberSaveable { mutableStateOf(1) }
     var rol by rememberSaveable { mutableStateOf(RolUsuario.CONTRATANTE) }
     var nombre by rememberSaveable { mutableStateOf("") }
     var correo by rememberSaveable { mutableStateOf("") }
     var celular by rememberSaveable { mutableStateOf("") }
+    var fechaNacimiento by rememberSaveable { mutableStateOf("") }
+    var fotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var fotoDesdeCamara by rememberSaveable { mutableStateOf(false) }
+    var hojaFoto by rememberSaveable { mutableStateOf(false) }
+    val accionesFoto = rememberAccionesFoto { uri, desdeCamara -> fotoUri = uri; fotoDesdeCamara = desdeCamara }
     var password by rememberSaveable { mutableStateOf("") }
     var verPassword by rememberSaveable { mutableStateOf(false) }
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
@@ -92,6 +106,7 @@ fun RegistroScreen(
     var errorNombre by rememberSaveable { mutableStateOf<String?>(null) }
     var errorCorreo by rememberSaveable { mutableStateOf<String?>(null) }
     var errorCelular by rememberSaveable { mutableStateOf<String?>(null) }
+    var errorFecha by rememberSaveable { mutableStateOf<String?>(null) }
     var errorPassword by rememberSaveable { mutableStateOf<String?>(null) }
     var errorOficio by rememberSaveable { mutableStateOf<String?>(null) }
     var errorAcepta by rememberSaveable { mutableStateOf<String?>(null) }
@@ -105,10 +120,12 @@ fun RegistroScreen(
         errorNombre = Validaciones.nombre(nombre)
         errorCorreo = Validaciones.correo(correo)
         errorCelular = Validaciones.celular(celular)
+        val nacimiento = Validaciones.fechaNacimiento(fechaNacimiento)
+        errorFecha = nacimiento.error
         errorPassword = Validaciones.password(password)
         errorOficio = if (rol == RolUsuario.PRESTADOR && oficio == null) "Elige qué servicio ofreces." else null
         errorAcepta = if (!acepta) "Para crear tu cuenta acepta las normas." else null
-        val hayError = listOf(errorNombre, errorCorreo, errorCelular, errorPassword, errorOficio, errorAcepta)
+        val hayError = listOf(errorNombre, errorCorreo, errorCelular, errorFecha, errorPassword, errorOficio, errorAcepta)
             .any { it != null }
         if (!hayError) {
             viewModel.registrar(
@@ -119,10 +136,21 @@ fun RegistroScreen(
                     password = password,
                     rol = rol,
                     oficio = oficio?.etiqueta,
-                    zona = zona
-                )
+                    zona = zona,
+                    fechaNacimiento = nacimiento.fecha
+                ),
+                fotoUri?.let { FotoElegida(it, fotoDesdeCamara) }
             ) {}
         }
+    }
+
+    if (hojaFoto) {
+        HojaAgregarFoto(
+            acciones = accionesFoto,
+            onCerrar = { hojaFoto = false },
+            titulo = "Foto de perfil",
+            texto = "Es opcional. Las personas verán esta foto en tu perfil; puedes cambiarla cuando quieras. Aruy la reduce y le quita la ubicación."
+        )
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -166,6 +194,26 @@ fun RegistroScreen(
                     BotonTexto("Iniciar sesión", onIniciarSesion)
                 }
             } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (fotoUri != null) {
+                        AsyncImage(
+                            model = fotoUri,
+                            contentDescription = "Tu foto de perfil",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(72.dp).clip(CircleShape)
+                        )
+                    } else {
+                        AruyAvatar(nombre.ifBlank { "Tú" }, tamano = 72.dp)
+                    }
+                    Column {
+                        BotonContorno(
+                            texto = if (fotoUri == null) "Agregar foto (opcional)" else "Cambiar foto",
+                            onClick = { hojaFoto = true },
+                            icono = Icons.Filled.PhotoCamera
+                        )
+                        if (fotoUri != null) BotonTexto("Quitar foto", { fotoUri = null })
+                    }
+                }
                 AruyCampo(
                     valor = nombre,
                     onValor = { nombre = it; errorNombre = null },
@@ -189,8 +237,17 @@ fun RegistroScreen(
                     etiqueta = "Celular",
                     placeholder = "0998765432",
                     ayuda = "Las personas te contactan por este número en WhatsApp.",
-                    error = errorCelular,
+                    error = errorCelular ?: formulario.errorCelular,
                     teclado = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+                )
+                AruyCampo(
+                    valor = fechaNacimiento,
+                    onValor = { fechaNacimiento = Validaciones.formatearFecha(it); errorFecha = null },
+                    etiqueta = "Fecha de nacimiento",
+                    placeholder = "25/03/2000",
+                    ayuda = "Aruy es solo para mayores de 18 años.",
+                    error = errorFecha ?: formulario.errorFechaNacimiento,
+                    teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
                 )
                 AruyCampo(
                     valor = password,

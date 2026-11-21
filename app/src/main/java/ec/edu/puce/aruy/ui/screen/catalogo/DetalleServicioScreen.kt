@@ -1,5 +1,8 @@
 package ec.edu.puce.aruy.ui.screen.catalogo
 
+import ec.edu.puce.aruy.ui.components.rememberPedirNotificaciones
+import ec.edu.puce.aruy.ui.components.BotonRelleno
+import androidx.compose.material.icons.automirrored.filled.Send
 import ec.edu.puce.aruy.ui.theme.AruyTheme
 import ec.edu.puce.aruy.ui.theme.Espacios
 import ec.edu.puce.aruy.ui.theme.Superposiciones
@@ -43,13 +46,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import ec.edu.puce.aruy.ui.components.Aviso
+import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.domain.catalogo.Contacto
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.model.FotoPortafolio
@@ -107,10 +111,11 @@ fun DetalleServicioScreen(
     onPrestador: (String) -> Unit,
     onCuentaRequerida: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsState()
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
+    val pedirNotificaciones = rememberPedirNotificaciones(snackbar)
 
     var pestana by rememberSaveable { mutableStateOf(0) }
     var hoja by rememberSaveable { mutableStateOf<String?>(null) }
@@ -120,15 +125,15 @@ fun DetalleServicioScreen(
     val servicioId = ui.item?.id
     val esFavorito by remember(servicioId) {
         if (servicioId == null) kotlinx.coroutines.flow.flowOf(false) else actividad.esFavorito(servicioId)
-    }.collectAsState(initial = false)
+    }.collectAsStateWithLifecycle(initialValue = false)
 
     LaunchedEffect(servicioId) { servicioId?.let(actividad::registrarVisto) }
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
 
-    fun avisar(texto: String) { alcance.launch { snackbar.avisar(texto) } }
+    fun avisar(aviso: Aviso) { alcance.launch { snackbar.avisar(aviso) } }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { AvisoHost(snackbar) },
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             ui.item?.let { item ->
@@ -138,7 +143,7 @@ fun DetalleServicioScreen(
                             texto = if (esFavorito) "Guardado" else "Guardar",
                             onClick = {
                                 actividad.alternarFavorito(item.id, esFavorito) { ahora ->
-                                    avisar(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos.")
+                                    avisar(Aviso.exito(if (ahora) "Guardaste este servicio en favoritos." else "Lo quitaste de favoritos."))
                                 }
                             },
                             icono = if (esFavorito) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -147,11 +152,14 @@ fun DetalleServicioScreen(
                         )
                     },
                     primario = {
-                        BotonWhatsApp(
-                            "Contactar",
-                            { hoja = "contactar" },
-                            icono = Icons.AutoMirrored.Filled.Chat,
-                            habilitado = Contacto.numeroWhatsApp(item.prestador?.telefono) != null
+                        // La acción principal ahora es pedir el servicio dentro de Aruy; WhatsApp queda bajo la tarjeta del prestador
+                        BotonRelleno(
+                            "Solicitar",
+                            { if (rol == RolNavegacion.INVITADO) onCuentaRequerida() else hoja = "solicitar" },
+                            icono = Icons.AutoMirrored.Filled.Send,
+                            grande = true,
+                            ancho = true,
+                            habilitado = FiltroCatalogo.disponibleAhora(item)
                         )
                     }
                 )
@@ -237,6 +245,14 @@ fun DetalleServicioScreen(
                         }
                     }
 
+                    BotonWhatsApp(
+                        "Escribir por WhatsApp",
+                        { hoja = "contactar" },
+                        modifier = Modifier.fillMaxWidth(),
+                        icono = Icons.AutoMirrored.Filled.Chat,
+                        habilitado = Contacto.numeroWhatsApp(item.prestador?.telefono) != null
+                    )
+
                     Row(horizontalArrangement = Arrangement.spacedBy(Espacios.s), modifier = Modifier.fillMaxWidth()) {
                         PESTANAS.forEachIndexed { i, titulo ->
                             AruyChip(titulo, seleccionado = pestana == i, onClick = { pestana = i })
@@ -262,6 +278,18 @@ fun DetalleServicioScreen(
     val item = ui.item
     if (item != null) {
         when (hoja) {
+            "solicitar" -> HojaNuevaSolicitud(
+                nombre = item.nombrePrestador,
+                tituloServicio = item.servicio.titulo,
+                enviando = ui.enviandoSolicitud,
+                onEnviar = { mensaje ->
+                    viewModel.enviarSolicitud(mensaje) {
+                        hoja = null
+                        pedirNotificaciones() // "te avisamos cuando responda": ahora sí tiene sentido pedir el permiso
+                    }
+                },
+                onCerrar = { hoja = null }
+            )
             "contactar" -> HojaContactar(
                 nombre = item.nombrePrestador,
                 oficio = item.prestador?.oficio,
@@ -272,19 +300,19 @@ fun DetalleServicioScreen(
                     val numero = Contacto.numeroWhatsApp(item.prestador?.telefono)
                     hoja = null
                     if (numero == null) {
-                        avisar("Este prestador no tiene un número de WhatsApp válido.")
+                        avisar(Aviso.error("Este prestador no tiene un número de WhatsApp válido."))
                     } else if (abrirWhatsApp(contexto, numero, mensaje)) {
                         actividad.registrarContacto(item.servicio.prestadorId, item.id, item.nombrePrestador, mensaje)
-                        avisar("Abrimos WhatsApp con tu mensaje. Quedó en tu historial.")
+                        avisar(Aviso.exito("Abrimos WhatsApp con tu mensaje. Quedó en tu historial."))
                     } else {
-                        avisar("No pudimos abrir WhatsApp en este teléfono.")
+                        avisar(Aviso.error("No pudimos abrir WhatsApp en este teléfono."))
                     }
                 },
                 onCopiar = { mensaje ->
                     (contexto.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .setPrimaryClip(ClipData.newPlainText("Mensaje para ${item.nombrePrestador}", mensaje))
                     hoja = null
-                    avisar("Mensaje copiado")
+                    avisar(Aviso.exito("Mensaje copiado"))
                 },
                 onCerrar = { hoja = null }
             )
@@ -299,7 +327,7 @@ fun DetalleServicioScreen(
                 onEnviar = { motivo, detalle ->
                     actividad.reportar("SERVICIO", item.id, item.servicio.titulo, motivo.titulo, detalle)
                     hoja = null
-                    avisar("Reporte guardado en este teléfono.")
+                    avisar(Aviso.exito("Reporte guardado en este teléfono."))
                 },
                 onCerrar = { hoja = null }
             )
