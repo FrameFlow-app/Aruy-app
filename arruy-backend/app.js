@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { registrarError } = require('./registro');
+const cors = require('./middleware/cors');
 
 if (!process.env.JWT_SECRET) {
   throw new Error('Falta JWT_SECRET en el archivo .env');
@@ -16,6 +17,8 @@ const app = express();
 // Render define RENDER automaticamente; en otro proxy, definir TRUST_PROXY=1.
 if (process.env.RENDER || process.env.TRUST_PROXY) app.set('trust proxy', 1);
 app.use(helmet());
+// CORS antes de los limites y las rutas: el preflight OPTIONS responde enseguida
+app.use(cors);
 app.use(express.json({ limit: '100kb' }));
 
 // ---------------- Limites de velocidad ----------------
