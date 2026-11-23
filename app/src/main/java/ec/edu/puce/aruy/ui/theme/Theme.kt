@@ -1,10 +1,13 @@
 package ec.edu.puce.aruy.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -12,6 +15,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -182,12 +186,22 @@ fun AruyTheme(
     modo: ModoTema = ModoTema.SISTEMA,
     tamanoTexto: TamanoTexto = TamanoTexto.NORMAL,
     reducirAnimaciones: Boolean = false,
+    colorDinamico: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val oscuro = when (modo) {
         ModoTema.SISTEMA -> isSystemInDarkTheme()
         ModoTema.CLARO -> false
         ModoTema.OSCURO -> true
+    }
+    // Material You: desde Android 12 (API 31) la paleta sale del fondo de pantalla del usuario.
+    // En versiones anteriores, o si se desactiva, se usan las paletas propias de Aruy.
+    val contexto = LocalContext.current
+    val esquema = when {
+        colorDinamico && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (oscuro) dynamicDarkColorScheme(contexto) else dynamicLightColorScheme(contexto)
+        oscuro -> EsquemaOscuro
+        else -> EsquemaClaro
     }
     val densidad = LocalDensity.current
     val densidadConTexto = Density(densidad.density, densidad.fontScale * tamanoTexto.escala)
@@ -198,7 +212,7 @@ fun AruyTheme(
         LocalDensity provides densidadConTexto
     ) {
         MaterialTheme(
-            colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
+            colorScheme = esquema,
             typography = Typography,
             shapes = FormasAruy,
             content = content

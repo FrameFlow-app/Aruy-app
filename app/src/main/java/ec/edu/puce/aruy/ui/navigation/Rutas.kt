@@ -10,9 +10,12 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.graphics.vector.ImageVector
-import ec.edu.puce.aruy.domain.model.CategoriaServicio
 
-/** Rutas de la app, equivalentes a la tabla de `js/core/router.js` del prototipo. */
+/**
+ * Claves de pantalla de la app (tabla de `js/core/router.js` del prototipo). La navegación real usa los
+ * destinos tipados de [Destino]; estas claves sirven para las guardas por rol ([rutaPermitida]), para saber
+ * qué pantalla se ve ([claveDe]) y para la barra inferior.
+ */
 object Rutas {
     const val SPLASH = "splash"
     const val BIENVENIDA = "bienvenida"
@@ -46,28 +49,6 @@ object Rutas {
     const val SOLICITUDES = "solicitudes-aruy"
     const val CHAT = "chat"
     const val RECUPERAR = "recuperar"
-
-    /** Patrones con argumentos, tal como se registran en el NavHost. */
-    const val PATRON_BUSCAR = "$BUSCAR?cat={cat}&foco={foco}"
-    const val PATRON_EDITOR = "$EDITOR?id={id}"
-    const val PATRON_SERVICIO = "$SERVICIO/{id}"
-    const val PATRON_PRESTADOR = "$PRESTADOR_PUBLICO/{id}"
-    const val PATRON_CHAT = "$CHAT/{solicitudId}"
-
-    fun chat(solicitudId: String) = "$CHAT/$solicitudId"
-
-    fun buscar(categoria: CategoriaServicio? = null, enfocar: Boolean = false) =
-        "$BUSCAR?cat=${categoria?.name.orEmpty()}&foco=$enfocar"
-
-    /** Sin id abre el formulario de un servicio nuevo. */
-    fun editor(servicioId: String? = null) = "$EDITOR?id=${servicioId.orEmpty()}"
-
-    fun servicio(id: String) = "$SERVICIO/$id"
-
-    fun prestador(perfilId: String) = "$PRESTADOR_PUBLICO/$perfilId"
-
-    /** Quita los argumentos: "servicio/{id}" y "buscar?cat=..." quedan como "servicio" y "buscar". */
-    fun base(ruta: String?): String? = ruta?.substringBefore('?')?.substringBefore('/')
 
     /** Pantallas de entrada: con una sesión real redirigen al inicio del rol (`router.js`). */
     val ENTRADA = setOf(BIENVENIDA, LOGIN, REGISTRO)
