@@ -59,12 +59,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import ec.edu.puce.aruy.ui.components.AvisoHost
 import ec.edu.puce.aruy.AppContainer
 import ec.edu.puce.aruy.domain.catalogo.FiltrosCatalogo
@@ -121,7 +120,7 @@ internal fun rolDe(estado: EstadoSesion): RolNavegacion? = when (estado) {
     EstadoSesion.Cargando, EstadoSesion.SinSesion -> null
 }
 
-private fun NavController.irLimpio(ruta: String) = navigate(ruta) {
+private fun NavController.irLimpio(destino: Destino) = navigate(destino) {
     popUpTo(0) { inclusive = true }
     launchSingleTop = true
 }
@@ -139,7 +138,7 @@ fun AruyApp(
 ) {
     val navController = rememberNavController()
     val entradaActual by navController.currentBackStackEntryAsState()
-    val rutaActual = Rutas.base(entradaActual?.destination?.route)
+    val rutaActual = claveDe(entradaActual?.destination)
     val snackbarHostState = remember { SnackbarHostState() }
     val alcanceApp = rememberCoroutineScope()
 
@@ -163,14 +162,14 @@ fun AruyApp(
     val accionesCuenta = AccionesCuenta(
         esInvitado = rol == RolNavegacion.INVITADO,
         esPrestador = rol == RolNavegacion.PRESTADOR,
-        onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
-        onEditarPerfil = { navController.navigate(Rutas.EDITAR_PERFIL) },
-        onPro = { navController.navigate(Rutas.PRO) },
-        onAjustes = { navController.navigate(Rutas.AJUSTES) },
-        onPermisos = { navController.navigate(Rutas.PERMISOS) },
+        onSolicitudes = { navController.navigate(Destino.Solicitudes) },
+        onEditarPerfil = { navController.navigate(Destino.EditarPerfil) },
+        onPro = { navController.navigate(Destino.Pro) },
+        onAjustes = { navController.navigate(Destino.Ajustes) },
+        onPermisos = { navController.navigate(Destino.Permisos) },
         onCerrarSesion = authViewModel::cerrarSesion,
-        onIniciarSesion = { navController.navigate(Rutas.LOGIN) },
-        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) }
+        onIniciarSesion = { navController.navigate(Destino.Login) },
+        onCrearCuenta = { navController.navigate(Destino.Registro) }
     )
     val propietarioCiclo = LocalLifecycleOwner.current
     val estadoDeSesion = when (estadoSesion) {
@@ -200,7 +199,7 @@ fun AruyApp(
     }
     LaunchedEffect(Unit) {
         contenedor.resumenSolicitudes.llegaron.collect { nuevo ->
-            val ruta = Rutas.base(navController.currentDestination?.route)
+            val ruta = claveDe(navController.currentDestination)
             if (ruta != Rutas.SOLICITUDES && ruta != Rutas.CHAT) {
                 snackbarHostState.avisar(Aviso.exito(textoDeLlegada(nuevo)))
             }
@@ -209,7 +208,7 @@ fun AruyApp(
     // Al tocar una notificación se abre la pantalla que pidió (cuando ya terminó el splash y hay sesión)
     LaunchedEffect(abrirRuta, estadoDeSesion, rutaActual) {
         if (abrirRuta != null && estadoDeSesion == 1 && rutaActual != Rutas.SPLASH) {
-            navController.navigate(abrirRuta)
+            destinoDeClave(abrirRuta)?.let { navController.navigate(it) }
             alAbrirRuta()
         }
     }
@@ -281,22 +280,22 @@ fun AruyApp(
     LaunchedEffect(estadoSesion) {
         val antes = sesionAnterior
         sesionAnterior = estadoSesion
-        val ruta = Rutas.base(navController.currentDestination?.route)
+        val ruta = claveDe(navController.currentDestination)
         when {
             estadoSesion is EstadoSesion.Autenticada && ruta in Rutas.ENTRADA ->
-                navController.irLimpio(rutaInicial(rolDe(estadoSesion) ?: RolNavegacion.INVITADO))
+                navController.irLimpio(destinoInicial(rolDe(estadoSesion) ?: RolNavegacion.INVITADO))
             estadoSesion is EstadoSesion.SinSesion &&
                 (antes is EstadoSesion.Autenticada || antes is EstadoSesion.Invitado) ->
-                navController.irLimpio(if (contenedor.sesionManager.aviso.value != null) Rutas.LOGIN else Rutas.BIENVENIDA)
+                navController.irLimpio(if (contenedor.sesionManager.aviso.value != null) Destino.Login else Destino.Bienvenida)
         }
     }
 
     val estadoActualizado by rememberUpdatedState(estadoSesion)
-    val irAlInicio: () -> Unit = { rol?.let { navController.irLimpio(rutaInicial(it)) } }
+    val irAlInicio: () -> Unit = { rol?.let { navController.irLimpio(destinoInicial(it)) } }
 
     /** Un invitado no entra al detalle: se le ofrece crear su cuenta (`router.js`, `flows.js`). */
     val abrirServicio: (String) -> Unit = { id ->
-        if (rol == RolNavegacion.INVITADO) mostrarHojaCuenta = true else navController.navigate(Rutas.servicio(id))
+        if (rol == RolNavegacion.INVITADO) mostrarHojaCuenta = true else navController.navigate(Destino.Servicio(id))
     }
 
     Scaffold(
@@ -309,12 +308,14 @@ fun AruyApp(
                     onSeleccionar = { item ->
                         if (item.ruta == Rutas.REGISTRO) {
                             // "Crear cuenta" del invitado abre el registro, no es una pestaña
-                            navController.navigate(Rutas.REGISTRO)
+                            navController.navigate(Destino.Registro)
                         } else {
-                            navController.navigate(item.ruta) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+                            destinoDeClave(item.ruta)?.let { destino ->
+                                navController.navigate(destino) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         }
                     }
@@ -325,47 +326,47 @@ fun AruyApp(
         Column(Modifier.padding(relleno)) {
         AvisoSinConexion(visible = !hayConexion && rutaActual != Rutas.SPLASH)
         Box(Modifier.weight(1f)) {
-            NavHost(navController = navController, startDestination = Rutas.SPLASH) {
+            NavHost(navController = navController, startDestination = Destino.Splash) {
 
-                composable(Rutas.SPLASH) {
+                composable<Destino.Splash> {
                     SplashScreen(estado = estadoSesion) {
                         val actual = estadoActualizado
                         navController.irLimpio(
                             when (actual) {
-                                is EstadoSesion.Autenticada -> rutaInicial(rolDe(actual) ?: RolNavegacion.INVITADO)
-                                EstadoSesion.Invitado -> Rutas.INICIO
-                                else -> Rutas.BIENVENIDA
+                                is EstadoSesion.Autenticada -> destinoInicial(rolDe(actual) ?: RolNavegacion.INVITADO)
+                                EstadoSesion.Invitado -> Destino.Inicio
+                                else -> Destino.Bienvenida
                             }
                         )
                     }
                 }
-                composable(Rutas.BIENVENIDA) {
+                composable<Destino.Bienvenida> {
                     BienvenidaScreen(
-                        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) },
-                        onIniciarSesion = { navController.navigate(Rutas.LOGIN) },
+                        onCrearCuenta = { navController.navigate(Destino.Registro) },
+                        onIniciarSesion = { navController.navigate(Destino.Login) },
                         onExplorar = {
                             authViewModel.entrarComoInvitado()
-                            navController.irLimpio(Rutas.INICIO)
+                            navController.irLimpio(Destino.Inicio)
                         }
                     )
                 }
-                composable(Rutas.LOGIN) {
+                composable<Destino.Login> {
                     LoginScreen(
                         viewModel = authViewModel,
-                        onVolver = { if (!navController.popBackStack()) navController.irLimpio(Rutas.BIENVENIDA) },
-                        onCrearCuenta = { navController.navigate(Rutas.REGISTRO) },
-                        onOlvide = { navController.navigate(Rutas.RECUPERAR) }
+                        onVolver = { if (!navController.popBackStack()) navController.irLimpio(Destino.Bienvenida) },
+                        onCrearCuenta = { navController.navigate(Destino.Registro) },
+                        onOlvide = { navController.navigate(Destino.Recuperar) }
                     )
                 }
-                composable(Rutas.REGISTRO) {
+                composable<Destino.Registro> {
                     RegistroScreen(
                         viewModel = authViewModel,
-                        onVolver = { if (!navController.popBackStack()) navController.irLimpio(Rutas.BIENVENIDA) },
-                        onIniciarSesion = { navController.navigate(Rutas.LOGIN) }
+                        onVolver = { if (!navController.popBackStack()) navController.irLimpio(Destino.Bienvenida) },
+                        onIniciarSesion = { navController.navigate(Destino.Login) }
                     )
                 }
 
-                composable(Rutas.INICIO) {
+                composable<Destino.Inicio> {
                     Protegida(Rutas.INICIO, rol, irAlInicio) {
                         InicioScreen(
                             catalogo = catalogo,
@@ -373,32 +374,27 @@ fun AruyApp(
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre,
                             fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
                             invitado = rol == RolNavegacion.INVITADO,
-                            onBuscar = { navController.navigate(Rutas.buscar(enfocar = true)) },
-                            onCategoria = { navController.navigate(Rutas.buscar(it)) },
+                            onBuscar = { navController.navigate(Destino.Buscar(foco = true)) },
+                            onCategoria = { navController.navigate(Destino.Buscar(cat = it.name)) },
                             onVerTodos = { orden ->
                                 buscar.actualizar {
                                     FiltrosCatalogo(soloDisponibles = orden == null, orden = orden ?: OrdenCatalogo.MEJOR_CALIFICACION)
                                 }
-                                navController.navigate(Rutas.buscar())
+                                navController.navigate(Destino.Buscar())
                             },
                             onServicio = abrirServicio,
-                            onCrearCuenta = { navController.navigate(Rutas.REGISTRO) },
+                            onCrearCuenta = { navController.navigate(Destino.Registro) },
                             puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
-                            onOfrecer = { navController.navigate(Rutas.OFRECER) },
+                            onOfrecer = { navController.navigate(Destino.Ofrecer) },
                             solicitudesNuevas = resumenSolicitudes.nuevas,
-                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
+                            onSolicitudes = { navController.navigate(Destino.Solicitudes) },
                             cuenta = accionesCuenta
                         )
                     }
                 }
-                composable(
-                    Rutas.PATRON_BUSCAR,
-                    arguments = listOf(
-                        navArgument("cat") { type = NavType.StringType; nullable = true; defaultValue = null },
-                        navArgument("foco") { type = NavType.BoolType; defaultValue = false }
-                    )
-                ) { entrada ->
-                    val categoria = entrada.arguments?.getString("cat")?.takeIf { it.isNotEmpty() }
+                composable<Destino.Buscar> { entrada ->
+                    val argumentos = entrada.toRoute<Destino.Buscar>()
+                    val categoria = argumentos.cat?.takeIf { it.isNotEmpty() }
                     LaunchedEffect(categoria) {
                         if (categoria != null) buscar.aplicarCategoria(runCatching { CategoriaServicio.valueOf(categoria) }.getOrNull())
                     }
@@ -407,22 +403,22 @@ fun AruyApp(
                             catalogo = catalogo,
                             buscar = buscar,
                             invitado = rol == RolNavegacion.INVITADO,
-                            enfocar = entrada.arguments?.getBoolean("foco") ?: false,
+                            enfocar = argumentos.foco,
                             onServicio = abrirServicio
                         )
                     }
                 }
-                composable(Rutas.GUARDADOS) {
+                composable<Destino.Guardados> {
                     Protegida(Rutas.GUARDADOS, rol, irAlInicio) {
                         GuardadosScreen(
                             catalogo = catalogo,
                             actividad = actividad,
                             onServicio = abrirServicio,
-                            onBuscar = { navController.navigate(Rutas.buscar()) }
+                            onBuscar = { navController.navigate(Destino.Buscar()) }
                         )
                     }
                 }
-                composable(Rutas.PERFIL) {
+                composable<Destino.Perfil> {
                     Protegida(Rutas.PERFIL, rol, irAlInicio) {
                         (estadoSesion as? EstadoSesion.Autenticada)?.let { autenticada ->
                             PerfilScreen(
@@ -430,36 +426,36 @@ fun AruyApp(
                                 recibeSolicitudes = misServiciosUi.recibeSolicitudes,
                                 onCambiarRecepcion = misServicios::cambiarRecepcion,
                                 alAbrir = { if (rol == RolNavegacion.PRESTADOR) misServicios.cargarSiHaceFalta() },
-                                onEditar = { navController.navigate(Rutas.EDITAR_PERFIL) },
-                                onAjustes = { navController.navigate(Rutas.AJUSTES) },
-                                onPro = { navController.navigate(Rutas.PRO) },
-                                onPermisos = { navController.navigate(Rutas.PERMISOS) },
-                                onPrivacidad = { navController.navigate(Rutas.PRIVACIDAD) },
-                                onBloqueados = { navController.navigate(Rutas.BLOQUEADOS) },
-                                onReportes = { navController.navigate(Rutas.REPORTES) },
-                                onNormas = { navController.navigate(Rutas.NORMAS) },
-                                onBaja = { navController.navigate(Rutas.BAJA) },
+                                onEditar = { navController.navigate(Destino.EditarPerfil) },
+                                onAjustes = { navController.navigate(Destino.Ajustes) },
+                                onPro = { navController.navigate(Destino.Pro) },
+                                onPermisos = { navController.navigate(Destino.Permisos) },
+                                onPrivacidad = { navController.navigate(Destino.Privacidad) },
+                                onBloqueados = { navController.navigate(Destino.Bloqueados) },
+                                onReportes = { navController.navigate(Destino.Reportes) },
+                                onNormas = { navController.navigate(Destino.Normas) },
+                                onBaja = { navController.navigate(Destino.Baja) },
                                 onCerrarSesion = authViewModel::cerrarSesion,
                                 puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
-                                onOfrecer = { navController.navigate(Rutas.OFRECER) },
+                                onOfrecer = { navController.navigate(Destino.Ofrecer) },
                                 solicitudesNuevas = resumenSolicitudes.nuevas,
-                                onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) }
+                                onSolicitudes = { navController.navigate(Destino.Solicitudes) }
                             )
                         }
                     }
                 }
-                composable(Rutas.SOLICITUDES) {
+                composable<Destino.Solicitudes> {
                     Protegida(Rutas.SOLICITUDES, rol, irAlInicio) {
                         val vm: SolicitudesViewModel = viewModel(factory = contenedor.solicitudesViewModelFactory)
                         SolicitudesScreen(
                             viewModel = vm,
                             onVolver = { navController.popBackStack() },
-                            onChat = { navController.navigate(Rutas.chat(it)) }
+                            onChat = { navController.navigate(Destino.Chat(it)) }
                         )
                     }
                 }
-                composable(Rutas.PATRON_CHAT) { entrada ->
-                    val solicitudId = entrada.arguments?.getString("solicitudId").orEmpty()
+                composable<Destino.Chat> { entrada ->
+                    val solicitudId = entrada.toRoute<Destino.Chat>().solicitudId
                     Protegida(Rutas.CHAT, rol, irAlInicio) {
                         val vm: ChatViewModel = viewModel(key = "chat-$solicitudId", factory = contenedor.chatViewModelFactory(solicitudId))
                         // Al salir del chat los mensajes ya se leyeron: se actualiza el numerito
@@ -467,70 +463,70 @@ fun AruyApp(
                         ChatScreen(viewModel = vm, onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.RECUPERAR) {
+                composable<Destino.Recuperar> {
                     val vm: RecuperarViewModel = viewModel(factory = contenedor.recuperarViewModelFactory)
                     RecuperarScreen(
                         viewModel = vm,
                         onVolver = { navController.popBackStack() },
                         onListo = {
-                            if (!navController.popBackStack(Rutas.LOGIN, inclusive = false)) navController.irLimpio(Rutas.LOGIN)
+                            if (!navController.popBackStack<Destino.Login>(inclusive = false)) navController.irLimpio(Destino.Login)
                             alcanceApp.launch {
                                 snackbarHostState.avisar(Aviso.exito("Listo, ya puedes entrar con tu nueva contraseña"))
                             }
                         }
                     )
                 }
-                composable(Rutas.OFRECER) {
+                composable<Destino.Ofrecer> {
                     Protegida(Rutas.OFRECER, rol, irAlInicio) {
                         val vm: ActivarPrestadorViewModel = viewModel(factory = contenedor.activarPrestadorViewModelFactory)
                         ActivarPrestadorScreen(
                             viewModel = vm,
                             onVolver = { navController.popBackStack() },
-                            onListo = { navController.irLimpio(Rutas.PANEL) }
+                            onListo = { navController.irLimpio(Destino.Panel) }
                         )
                     }
                 }
-                composable(Rutas.EDITAR_PERFIL) {
+                composable<Destino.EditarPerfil> {
                     Protegida(Rutas.EDITAR_PERFIL, rol, irAlInicio) {
                         val vm: EditarPerfilViewModel = viewModel(factory = contenedor.editarPerfilViewModelFactory)
                         EditarPerfilScreen(vm, onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.AJUSTES) {
+                composable<Destino.Ajustes> {
                     Protegida(Rutas.AJUSTES, rol, irAlInicio) {
                         val vm: AjustesViewModel = viewModel(factory = contenedor.ajustesViewModelFactory)
                         AjustesScreen(vm, onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.PERMISOS) {
+                composable<Destino.Permisos> {
                     Protegida(Rutas.PERMISOS, rol, irAlInicio) {
                         PermisosScreen(onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.PRIVACIDAD) {
+                composable<Destino.Privacidad> {
                     Protegida(Rutas.PRIVACIDAD, rol, irAlInicio) {
                         PrivacidadScreen(
                             onVolver = { navController.popBackStack() },
-                            onPermisos = { navController.navigate(Rutas.PERMISOS) },
-                            onBaja = { navController.navigate(Rutas.BAJA) }
+                            onPermisos = { navController.navigate(Destino.Permisos) },
+                            onBaja = { navController.navigate(Destino.Baja) }
                         )
                     }
                 }
-                composable(Rutas.BAJA) {
+                composable<Destino.Baja> {
                     Protegida(Rutas.BAJA, rol, irAlInicio) {
                         val vm: BajaCuentaViewModel = viewModel(factory = contenedor.bajaCuentaViewModelFactory)
                         BajaCuentaScreen(vm, onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.PRO) {
+                composable<Destino.Pro> {
                     Protegida(Rutas.PRO, rol, irAlInicio) {
                         val vm: AruyProViewModel = viewModel(factory = contenedor.aruyProViewModelFactory)
                         AruyProScreen(vm, onVolver = { navController.popBackStack() })
                     }
                 }
 
-                composable(Rutas.PATRON_SERVICIO) { entrada ->
-                    val id = entrada.arguments?.getString("id").orEmpty()
+                composable<Destino.Servicio> { entrada ->
+                    val id = entrada.toRoute<Destino.Servicio>().id
                     Protegida(Rutas.SERVICIO, rol, irAlInicio) {
                         val vm: DetalleViewModel = viewModel(
                             factory = fabricaVm { DetalleViewModel(id, catalogo.servicioPorId(id), contenedor.catalogoRepository, contenedor.enviarSolicitudCaso, contenedor.obtenerSolicitudesCaso) }
@@ -540,14 +536,14 @@ fun AruyApp(
                             actividad = actividad,
                             rol = rol ?: RolNavegacion.INVITADO,
                             onVolver = { navController.popBackStack() },
-                            onPrestador = { navController.navigate(Rutas.prestador(it)) },
-                            onChat = { navController.navigate(Rutas.chat(it)) },
+                            onPrestador = { navController.navigate(Destino.PrestadorPublico(it)) },
+                            onChat = { navController.navigate(Destino.Chat(it)) },
                             onCuentaRequerida = { mostrarHojaCuenta = true }
                         )
                     }
                 }
-                composable(Rutas.PATRON_PRESTADOR) { entrada ->
-                    val id = entrada.arguments?.getString("id").orEmpty()
+                composable<Destino.PrestadorPublico> { entrada ->
+                    val id = entrada.toRoute<Destino.PrestadorPublico>().id
                     Protegida(Rutas.PRESTADOR_PUBLICO, rol, irAlInicio) {
                         val vm: PrestadorViewModel = viewModel(
                             factory = fabricaVm {
@@ -566,55 +562,52 @@ fun AruyApp(
                         )
                     }
                 }
-                composable(Rutas.BLOQUEADOS) {
+                composable<Destino.Bloqueados> {
                     Protegida(Rutas.BLOQUEADOS, rol, irAlInicio) {
                         BloqueadosScreen(actividad, onVolver = { navController.popBackStack() })
                     }
                 }
-                composable(Rutas.REPORTES) {
+                composable<Destino.Reportes> {
                     Protegida(Rutas.REPORTES, rol, irAlInicio) {
-                        MisReportesScreen(actividad, onVolver = { navController.popBackStack() }, onVerNormas = { navController.navigate(Rutas.NORMAS) })
+                        MisReportesScreen(actividad, onVolver = { navController.popBackStack() }, onVerNormas = { navController.navigate(Destino.Normas) })
                     }
                 }
-                composable(Rutas.NORMAS) {
-                    NormasScreen(onVolver = { navController.popBackStack() }, onVerReportes = { navController.navigate(Rutas.REPORTES) })
+                composable<Destino.Normas> {
+                    NormasScreen(onVolver = { navController.popBackStack() }, onVerReportes = { navController.navigate(Destino.Reportes) })
                 }
 
-                composable(Rutas.PANEL) {
+                composable<Destino.Panel> {
                     Protegida(Rutas.PANEL, rol, irAlInicio) {
                         PanelScreen(
                             viewModel = misServicios,
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre.orEmpty(),
                             fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
-                            onNuevoServicio = { navController.navigate(Rutas.editor()) },
-                            onVerServicios = { navController.navigate(Rutas.MIS_SERVICIOS) },
-                            onEditar = { navController.navigate(Rutas.editor(it)) },
+                            onNuevoServicio = { navController.navigate(Destino.Editor()) },
+                            onVerServicios = { navController.navigate(Destino.MisServicios) },
+                            onEditar = { navController.navigate(Destino.Editor(it)) },
                             solicitudesPorResponder = resumenSolicitudes.recibidasPendientes,
                             solicitudesNuevas = resumenSolicitudes.recibidasNuevas,
-                            onSolicitudes = { navController.navigate(Rutas.SOLICITUDES) },
+                            onSolicitudes = { navController.navigate(Destino.Solicitudes) },
                             cuenta = accionesCuenta
                         )
                     }
                 }
-                composable(Rutas.MIS_SERVICIOS) {
+                composable<Destino.MisServicios> {
                     Protegida(Rutas.MIS_SERVICIOS, rol, irAlInicio) {
                         MisServiciosScreen(
                             viewModel = misServicios,
-                            onNuevo = { navController.navigate(Rutas.editor()) },
-                            onEditar = { navController.navigate(Rutas.editor(it)) }
+                            onNuevo = { navController.navigate(Destino.Editor()) },
+                            onEditar = { navController.navigate(Destino.Editor(it)) }
                         )
                     }
                 }
-                composable(Rutas.PORTAFOLIO) {
+                composable<Destino.Portafolio> {
                     Protegida(Rutas.PORTAFOLIO, rol, irAlInicio) {
-                        PortafolioScreen(misServicios, onPublicarServicio = { navController.navigate(Rutas.editor()) })
+                        PortafolioScreen(misServicios, onPublicarServicio = { navController.navigate(Destino.Editor()) })
                     }
                 }
-                composable(
-                    Rutas.PATRON_EDITOR,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })
-                ) { entrada ->
-                    val id = entrada.arguments?.getString("id")?.takeIf { it.isNotEmpty() }
+                composable<Destino.Editor> { entrada ->
+                    val id = entrada.toRoute<Destino.Editor>().id?.takeIf { it.isNotEmpty() }
                     Protegida(Rutas.EDITOR, rol, irAlInicio) {
                         val vm: EditorServicioViewModel = viewModel(factory = contenedor.editorViewModelFactory(id))
                         EditorServicioScreen(
@@ -634,8 +627,8 @@ fun AruyApp(
 
     if (mostrarHojaCuenta) {
         HojaCuentaRequerida(
-            onCrearCuenta = { mostrarHojaCuenta = false; navController.navigate(Rutas.REGISTRO) },
-            onIniciarSesion = { mostrarHojaCuenta = false; navController.navigate(Rutas.LOGIN) },
+            onCrearCuenta = { mostrarHojaCuenta = false; navController.navigate(Destino.Registro) },
+            onIniciarSesion = { mostrarHojaCuenta = false; navController.navigate(Destino.Login) },
             onCerrar = { mostrarHojaCuenta = false }
         )
     }

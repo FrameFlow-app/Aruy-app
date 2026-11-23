@@ -71,6 +71,7 @@ import ec.edu.puce.aruy.ui.viewmodel.CatalogoViewModel
 import ec.edu.puce.aruy.ui.viewmodel.EditorServicioViewModel
 import ec.edu.puce.aruy.ui.viewmodel.MisServiciosViewModel
 import ec.edu.puce.aruy.ui.viewmodel.fabricaVm
+import ec.edu.puce.aruy.ui.viewmodel.fabricaVmConEstado
 import ec.edu.puce.aruy.util.ConversorWebp
 import ec.edu.puce.aruy.util.EtiquetadorFotos
 import kotlinx.coroutines.CoroutineScope
@@ -133,7 +134,7 @@ class AppContainer(contexto: Context) {
     val pedirCodigoCaso = PedirCodigoUseCase(recuperarRepository)
     val restablecerContrasenaCaso = RestablecerContrasenaUseCase(recuperarRepository)
     val recuperarViewModelFactory: ViewModelProvider.Factory =
-        fabricaVm { RecuperarViewModel(pedirCodigoCaso, restablecerContrasenaCaso) }
+        fabricaVmConEstado { estado -> RecuperarViewModel(pedirCodigoCaso, restablecerContrasenaCaso, estado) }
 
     fun chatViewModelFactory(solicitudId: String): ViewModelProvider.Factory = fabricaVm {
         ChatViewModel(solicitudId, obtenerSolicitudesCaso, obtenerMensajesCaso, enviarMensajeCaso, compartirWhatsappCaso)
@@ -168,7 +169,7 @@ class AppContainer(contexto: Context) {
     val authViewModelFactory = AuthViewModel.fabrica(authRepository, iniciarSesionCaso, registrarCuentaCaso, conversorWebp, subirFotoPerfilCaso, sesionManager)
     val catalogoViewModelFactory: ViewModelProvider.Factory =
         fabricaVm { CatalogoViewModel(catalogoRepository, obtenerCatalogoCaso, actividadLocalRepository, sesionManager) }
-    val buscarViewModelFactory: ViewModelProvider.Factory = fabricaVm { BuscarViewModel() }
+    val buscarViewModelFactory: ViewModelProvider.Factory = fabricaVmConEstado { estado -> BuscarViewModel(estado) }
     val solicitudesViewModelFactory: ViewModelProvider.Factory = fabricaVm {
         SolicitudesViewModel(obtenerSolicitudesCaso, cambiarEstadoSolicitudCaso, marcarSolicitudesVistasCaso, resumenSolicitudes, sesionManager)
     }

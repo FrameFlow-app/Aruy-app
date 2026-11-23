@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization) // @Serializable para la navegación tipada
     alias(libs.plugins.ksp)
 }
 
@@ -29,8 +30,8 @@ android {
         applicationId = "ec.edu.puce.aruy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.6.0"
+        versionCode = 9
+        versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -110,6 +111,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.savedstate) // SavedStateHandle: estado que sobrevive a la muerte del proceso
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -118,6 +120,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended) // Íconos de la interfaz
     implementation(libs.androidx.navigation.compose) // Navegación entre pantallas
+    implementation(libs.kotlinx.serialization.json) // Rutas tipadas (@Serializable)
     implementation(libs.androidx.datastore.preferences) // Sesión (JWT) y preferencias
     implementation(libs.androidx.exifinterface) // Orientación de las fotos antes de convertirlas a WebP
     implementation(libs.coil.compose) // Carga de imágenes desde Supabase Storage

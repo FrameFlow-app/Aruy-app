@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.data.remote.util.ApiErrorHandler
@@ -9,6 +10,7 @@ import ec.edu.puce.aruy.domain.usecase.ObtenerCatalogoUseCase
 import ec.edu.puce.aruy.data.sesion.SesionManager
 import ec.edu.puce.aruy.domain.catalogo.FiltroCatalogo
 import ec.edu.puce.aruy.domain.catalogo.FiltrosCatalogo
+import ec.edu.puce.aruy.domain.catalogo.OrdenCatalogo
 import ec.edu.puce.aruy.domain.model.CategoriaServicio
 import ec.edu.puce.aruy.domain.model.EstadoApi
 import ec.edu.puce.aruy.domain.model.EstadoSesion
@@ -107,10 +109,40 @@ class CatalogoViewModel(
  * Filtros de Buscar. Viven en un ViewModel de la actividad para que se conserven al cambiar
  * de pestaña. Inicio manda la categoría elegida con [aplicarCategoria].
  */
-class BuscarViewModel : ViewModel() {
+class BuscarViewModel(
+    /** Guarda los filtros (texto, números y booleanos) para que sobrevivan a la muerte del proceso. */
+    private val estado: SavedStateHandle = SavedStateHandle()
+) : ViewModel() {
 
-    private val _filtros = MutableStateFlow(FiltrosCatalogo())
+    private val _filtros = MutableStateFlow(leerFiltros())
     val filtros: StateFlow<FiltrosCatalogo> = _filtros.asStateFlow()
+
+    init {
+        viewModelScope.launch { _filtros.collect { guardarFiltros(it) } }
+    }
+
+    private fun leerFiltros() = FiltrosCatalogo(
+        texto = estado.get<String>(K_TEXTO).orEmpty(),
+        categoria = estado.get<String>(K_CATEGORIA)?.let { n -> CategoriaServicio.entries.firstOrNull { it.name == n } },
+        zona = estado.get<String>(K_ZONA),
+        calificacionMinima = estado.get<Double>(K_CALIFICACION) ?: 0.0,
+        soloDisponibles = estado.get<Boolean>(K_DISPONIBLES) ?: false,
+        soloVerificados = estado.get<Boolean>(K_VERIFICADOS) ?: false,
+        precioMaximo = estado.get<Double>(K_PRECIO),
+        orden = estado.get<String>(K_ORDEN)?.let { n -> OrdenCatalogo.entries.firstOrNull { it.name == n } }
+            ?: OrdenCatalogo.MEJOR_CALIFICACION
+    )
+
+    private fun guardarFiltros(f: FiltrosCatalogo) {
+        estado[K_TEXTO] = f.texto
+        estado[K_CATEGORIA] = f.categoria?.name
+        estado[K_ZONA] = f.zona
+        estado[K_CALIFICACION] = f.calificacionMinima
+        estado[K_DISPONIBLES] = f.soloDisponibles
+        estado[K_VERIFICADOS] = f.soloVerificados
+        estado[K_PRECIO] = f.precioMaximo
+        estado[K_ORDEN] = f.orden.name
+    }
 
     fun actualizar(cambio: (FiltrosCatalogo) -> FiltrosCatalogo) {
         _filtros.value = cambio(_filtros.value)
@@ -130,4 +162,15 @@ class BuscarViewModel : ViewModel() {
 
     fun resultados(items: List<ServicioConPrestador>): List<ServicioConPrestador> =
         FiltroCatalogo.aplicar(items, _filtros.value)
+
+    private companion object {
+        const val K_TEXTO = "buscar_texto"
+        const val K_CATEGORIA = "buscar_categoria"
+        const val K_ZONA = "buscar_zona"
+        const val K_CALIFICACION = "buscar_calificacion"
+        const val K_DISPONIBLES = "buscar_disponibles"
+        const val K_VERIFICADOS = "buscar_verificados"
+        const val K_PRECIO = "buscar_precio"
+        const val K_ORDEN = "buscar_orden"
+    }
 }

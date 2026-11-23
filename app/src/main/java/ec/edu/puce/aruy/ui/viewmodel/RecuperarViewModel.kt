@@ -1,5 +1,6 @@
 package ec.edu.puce.aruy.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ec.edu.puce.aruy.data.remote.util.MensajesSolicitud
@@ -31,11 +32,31 @@ data class RecuperarUi(
 /** "Olvidé mi contraseña": primero el correo, luego el código de 6 dígitos y la contraseña nueva. */
 class RecuperarViewModel(
     private val casoPedir: PedirCodigoUseCase,
-    private val casoRestablecer: RestablecerContrasenaUseCase
+    private val casoRestablecer: RestablecerContrasenaUseCase,
+    /** Guarda el paso y el correo para que sobrevivan a la muerte del proceso. */
+    private val estado: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
-    private val _ui = MutableStateFlow(RecuperarUi())
+    // Al nacer (o al restaurarse tras la muerte del proceso) se lee lo guardado; si no hay nada, empieza de cero
+    private val _ui = MutableStateFlow(
+        RecuperarUi(
+            paso = estado.get<String>(CLAVE_PASO)
+                ?.let { nombre -> PasoRecuperar.entries.firstOrNull { it.name == nombre } }
+                ?: PasoRecuperar.CORREO,
+            correo = estado.get<String>(CLAVE_CORREO).orEmpty()
+        )
+    )
     val ui: StateFlow<RecuperarUi> = _ui.asStateFlow()
+
+    init {
+        // Cada cambio del estado se copia al SavedStateHandle (solo tipos simples: texto)
+        viewModelScope.launch {
+            _ui.collect {
+                estado[CLAVE_PASO] = it.paso.name
+                estado[CLAVE_CORREO] = it.correo
+            }
+        }
+    }
 
     private var cuentaAtras: Job? = null
 
@@ -94,5 +115,7 @@ class RecuperarViewModel(
 
     companion object {
         const val ESPERA_REENVIO_SEGUNDOS = 60
+        private const val CLAVE_PASO = "recuperar_paso"
+        private const val CLAVE_CORREO = "recuperar_correo"
     }
 }
