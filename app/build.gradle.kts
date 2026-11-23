@@ -30,8 +30,8 @@ android {
         applicationId = "ec.edu.puce.aruy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.6.0"
+        versionCode = 9
+        versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
