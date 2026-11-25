@@ -71,6 +71,13 @@ android {
             val urlProduccion = propiedadesLocales.getProperty("aruy.prodUrl") ?: urlNube
             buildConfigField("String", "BASE_URL", "\"$urlProduccion\"")
         }
+        create("github") {
+            dimension = "entorno"
+            // APK que se distribuye en GitHub Releases; convive con la app de Play (otro applicationId y otra firma).
+            applicationIdSuffix = ".apk"
+            val urlProduccion = propiedadesLocales.getProperty("aruy.prodUrl") ?: urlNube
+            buildConfigField("String", "BASE_URL", "\"$urlProduccion\"")
+        }
     }
 
     buildTypes {
