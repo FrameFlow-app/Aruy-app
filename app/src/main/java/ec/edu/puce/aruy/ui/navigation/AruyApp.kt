@@ -83,6 +83,7 @@ import ec.edu.puce.aruy.ui.screen.perfil.PermisosScreen
 import ec.edu.puce.aruy.ui.screen.perfil.PrivacidadScreen
 import ec.edu.puce.aruy.ui.screen.auth.BienvenidaScreen
 import ec.edu.puce.aruy.ui.screen.auth.LoginScreen
+import ec.edu.puce.aruy.ui.screen.auth.AUDIT_HASH_REGISTRO
 import ec.edu.puce.aruy.ui.screen.auth.RegistroScreen
 import ec.edu.puce.aruy.ui.screen.auth.SplashScreen
 import ec.edu.puce.aruy.ui.screen.catalogo.BloqueadosScreen
@@ -335,7 +336,7 @@ fun AruyApp(
                         navController.irLimpio(
                             when (actual) {
                                 is EstadoSesion.Autenticada -> destinoInicial(rolDe(actual) ?: RolNavegacion.INVITADO)
-                                EstadoSesion.Invitado -> Destino.Inicio
+                                EstadoSesion.Invitado -> Destino.Inicio(auditHash = AUDIT_HASH_REGISTRO) // EXAMEN (Caso 1)
                                 else -> Destino.Bienvenida
                             }
                         )
@@ -347,7 +348,7 @@ fun AruyApp(
                         onIniciarSesion = { navController.navigate(Destino.Login) },
                         onExplorar = {
                             authViewModel.entrarComoInvitado()
-                            navController.irLimpio(Destino.Inicio)
+                            navController.irLimpio(Destino.Inicio(auditHash = AUDIT_HASH_REGISTRO)) // EXAMEN (Caso 1)
                         }
                     )
                 }
@@ -367,7 +368,10 @@ fun AruyApp(
                     )
                 }
 
-                composable<Destino.Inicio> {
+                // EXAMEN (Caso 1): composable<Destino.Inicio> ya exige el contrato tipado; toRoute<T>() deserializa
+                // el argumento desde el back stack sin Strings magicos (RDA-2 Tema 7y8, 2.2.3).
+                composable<Destino.Inicio> { entrada ->
+                    val argumentosInicio = entrada.toRoute<Destino.Inicio>()
                     Protegida(Rutas.INICIO, rol, irAlInicio) {
                         InicioScreen(
                             catalogo = catalogo,
@@ -375,6 +379,7 @@ fun AruyApp(
                             nombre = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.nombre,
                             fotoUrl = (estadoSesion as? EstadoSesion.Autenticada)?.sesion?.usuario?.fotoPerfil,
                             invitado = rol == RolNavegacion.INVITADO,
+                            auditHash = argumentosInicio.auditHash, // EXAMEN (Caso 1)
                             onBuscar = { navController.navigate(Destino.Buscar(foco = true)) },
                             onCategoria = { navController.navigate(Destino.Buscar(cat = it.name)) },
                             onVerTodos = { orden ->

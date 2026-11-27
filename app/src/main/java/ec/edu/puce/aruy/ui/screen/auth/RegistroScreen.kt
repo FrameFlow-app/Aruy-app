@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -77,6 +80,12 @@ import ec.edu.puce.aruy.ui.components.BotonRelleno
 import ec.edu.puce.aruy.ui.components.BotonTexto
 import ec.edu.puce.aruy.ui.viewmodel.AuthViewModel
 
+/**
+ * EXAMEN (Caso 1): codigo estatico de auditoria generado en la pantalla de origen (el formulario de registro).
+ * Se envia como argumento tipado `auditHash` al destino del catalogo (Destino.Inicio).
+ */
+const val AUDIT_HASH_REGISTRO = "HASH-2026-RDA3"
+
 private val ZONAS = listOf("Norte", "Centro", "Sur", "Valles")
 
 /** Registro en 2 pasos (`auth.js`): 1) cómo usarás Aruy, 2) tus datos. */
@@ -104,6 +113,12 @@ fun RegistroScreen(
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
     var zona by rememberSaveable { mutableStateOf(ZONAS.first()) }
     var acepta by rememberSaveable { mutableStateOf(false) }
+    // EXAMEN (Caso 2): State Hoisting. El estado vive en el padre (stateful) y sobrevive a recomposiciones y
+    // rotacion porque usa rememberSaveable (RDA-1 Tema 4: "Inputs de texto" -> rememberSaveable).
+    var isFormEditable by rememberSaveable { mutableStateOf(true) }
+    // EXAMEN (Caso 5): texto del campo numerico y ultimo valor ya procesado de forma segura
+    var anios by rememberSaveable { mutableStateOf("") }
+    var resultadoAnios by rememberSaveable { mutableStateOf<Int?>(null) }
     // EXAMEN (Parte 1): controla el cuadro que muestra la Política de Privacidad
     var verPolitica by rememberSaveable { mutableStateOf(false) }
 
@@ -121,6 +136,11 @@ fun RegistroScreen(
     BackHandler(enabled = paso == 2) { paso = 1 }
 
     fun enviar() {
+        // EXAMEN (Caso 5): Null Safety. toIntOrNull() devuelve null (no lanza excepcion) si el texto no es un
+        // numero; el operador Elvis (?:) asigna 0 como valor seguro (RDA-1 Semana 2, "Manejo seguro de null").
+        val aniosSeguros: Int = anios.trim().toIntOrNull() ?: 0
+        resultadoAnios = aniosSeguros
+
         errorNombre = Validaciones.nombre(nombre)
         errorCorreo = Validaciones.correo(correo)
         errorCelular = Validaciones.celular(celular)
@@ -157,11 +177,26 @@ fun RegistroScreen(
         )
     }
 
-    Column(Modifier.fillMaxSize()) {
-        BarraSuperior(
-            titulo = if (paso == 1) "Crear cuenta" else if (rol == RolUsuario.CONTRATANTE) "Crea tu cuenta" else "Crea tu perfil",
-            onVolver = { if (paso == 2) paso = 1 else onVolver() }
-        )
+    // EXAMEN (Caso 2): Scaffold padre; el Switch va en las acciones de la TopAppBar y cambia isFormEditable
+    Scaffold(
+        topBar = {
+            BarraSuperior(
+                titulo = if (paso == 1) "Crear cuenta" else if (rol == RolUsuario.CONTRATANTE) "Crea tu cuenta" else "Crea tu perfil",
+                onVolver = { if (paso == 2) paso = 1 else onVolver() },
+                acciones = {
+                    Switch(
+                        checked = isFormEditable,
+                        onCheckedChange = { isFormEditable = !isFormEditable },
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .semantics { contentDescription = "Formulario editable" }
+                    )
+                }
+            )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { relleno ->
+    Column(Modifier.fillMaxSize().padding(relleno)) {
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -218,59 +253,30 @@ fun RegistroScreen(
                         if (fotoUri != null) BotonTexto("Quitar foto", { fotoUri = null })
                     }
                 }
-                AruyCampo(
-                    valor = nombre,
-                    onValor = { nombre = it; errorNombre = null },
-                    etiqueta = "Nombre completo",
-                    placeholder = "Ejemplo: Lucía Cevallos",
-                    error = errorNombre,
-                    maxCaracteres = Validaciones.NOMBRE_MAX,
-                    teclado = KeyboardOptions(imeAction = ImeAction.Next)
+                // EXAMEN (Caso 2): el padre (stateful) pasa isFormEditable al hijo (stateless) y recibe sus eventos
+                FormularioRegistro(
+                    isFormEditable = isFormEditable,
+                    nombre = nombre,
+                    onNombre = { nombre = it; errorNombre = null },
+                    errorNombre = errorNombre,
+                    correo = correo,
+                    onCorreo = { correo = it; errorCorreo = null },
+                    errorCorreo = errorCorreo ?: formulario.errorCorreo,
+                    celular = celular,
+                    onCelular = { celular = it; errorCelular = null },
+                    errorCelular = errorCelular ?: formulario.errorCelular,
+                    fechaNacimiento = fechaNacimiento,
+                    onFecha = { fechaNacimiento = Validaciones.formatearFecha(it); errorFecha = null },
+                    errorFecha = errorFecha ?: formulario.errorFechaNacimiento,
+                    password = password,
+                    onPassword = { password = it; errorPassword = null },
+                    errorPassword = errorPassword,
+                    verPassword = verPassword,
+                    onVerPassword = { verPassword = !verPassword },
+                    anios = anios,
+                    onAnios = { anios = it },
+                    resultadoAnios = resultadoAnios
                 )
-                AruyCampo(
-                    valor = correo,
-                    onValor = { correo = it; errorCorreo = null },
-                    etiqueta = "Correo",
-                    placeholder = "nombre@correo.com",
-                    error = errorCorreo ?: formulario.errorCorreo,
-                    teclado = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
-                )
-                AruyCampo(
-                    valor = celular,
-                    onValor = { celular = it; errorCelular = null },
-                    etiqueta = "Celular",
-                    placeholder = "0998765432",
-                    ayuda = "Las personas te contactan por este número en WhatsApp.",
-                    error = errorCelular ?: formulario.errorCelular,
-                    teclado = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
-                )
-                AruyCampo(
-                    valor = fechaNacimiento,
-                    onValor = { fechaNacimiento = Validaciones.formatearFecha(it); errorFecha = null },
-                    etiqueta = "Fecha de nacimiento",
-                    placeholder = "25/03/2000",
-                    ayuda = "Aruy es solo para mayores de 18 años.",
-                    error = errorFecha ?: formulario.errorFechaNacimiento,
-                    teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
-                )
-                AruyCampo(
-                    valor = password,
-                    onValor = { password = it; errorPassword = null },
-                    etiqueta = "Contraseña",
-                    placeholder = "Mínimo 8 caracteres",
-                    error = errorPassword,
-                    teclado = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                    transformacion = if (verPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    iconoFinal = {
-                        IconButton(onClick = { verPassword = !verPassword }) {
-                            Icon(
-                                if (verPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (verPassword) "Ocultar contraseña" else "Mostrar contraseña"
-                            )
-                        }
-                    }
-                )
-                MedidorPassword(password)
 
                 if (rol == RolUsuario.PRESTADOR) {
                     Text("¿Qué servicio ofreces?", style = MaterialTheme.typography.titleMedium)
@@ -352,10 +358,120 @@ fun RegistroScreen(
                     onClick = ::enviar,
                     grande = true,
                     ancho = true,
-                    cargando = formulario.cargando
+                    cargando = formulario.cargando,
+                    habilitado = isFormEditable // EXAMEN (Caso 2): el boton tambien obedece al estado elevado
                 )
             }
         }
+    }
+    }
+}
+
+/**
+ * EXAMEN (Caso 2): formulario STATELESS (sin estado propio). Solo recibe valores y devuelve eventos hacia arriba.
+ * Concepto del curso: State Hoisting (RDA-2 Tema 7y8) y "la UI como funcion del estado" (RDA-3 Tema 9y10):
+ * la interfaz solo proyecta lo que recibe; aqui `isFormEditable` decide si cada campo esta habilitado.
+ */
+@Composable
+private fun FormularioRegistro(
+    isFormEditable: Boolean,
+    nombre: String,
+    onNombre: (String) -> Unit,
+    errorNombre: String?,
+    correo: String,
+    onCorreo: (String) -> Unit,
+    errorCorreo: String?,
+    celular: String,
+    onCelular: (String) -> Unit,
+    errorCelular: String?,
+    fechaNacimiento: String,
+    onFecha: (String) -> Unit,
+    errorFecha: String?,
+    password: String,
+    onPassword: (String) -> Unit,
+    errorPassword: String?,
+    verPassword: Boolean,
+    onVerPassword: () -> Unit,
+    anios: String,
+    onAnios: (String) -> Unit,
+    resultadoAnios: Int?
+) {
+    AruyCampo(
+        valor = nombre,
+        onValor = onNombre,
+        etiqueta = "Nombre completo",
+        placeholder = "Ejemplo: Lucía Cevallos",
+        error = errorNombre,
+        maxCaracteres = Validaciones.NOMBRE_MAX,
+        teclado = KeyboardOptions(imeAction = ImeAction.Next),
+        habilitado = isFormEditable
+    )
+    AruyCampo(
+        valor = correo,
+        onValor = onCorreo,
+        etiqueta = "Correo",
+        placeholder = "nombre@correo.com",
+        error = errorCorreo,
+        teclado = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        habilitado = isFormEditable
+    )
+    AruyCampo(
+        valor = celular,
+        onValor = onCelular,
+        etiqueta = "Celular",
+        placeholder = "0998765432",
+        ayuda = "Las personas te contactan por este número en WhatsApp.",
+        error = errorCelular,
+        teclado = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+        habilitado = isFormEditable
+    )
+    AruyCampo(
+        valor = fechaNacimiento,
+        onValor = onFecha,
+        etiqueta = "Fecha de nacimiento",
+        placeholder = "25/03/2000",
+        ayuda = "Aruy es solo para mayores de 18 años.",
+        error = errorFecha,
+        teclado = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        habilitado = isFormEditable
+    )
+    AruyCampo(
+        valor = password,
+        onValor = onPassword,
+        etiqueta = "Contraseña",
+        placeholder = "Mínimo 8 caracteres",
+        error = errorPassword,
+        teclado = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+        transformacion = if (verPassword) VisualTransformation.None else PasswordVisualTransformation(),
+        iconoFinal = {
+            IconButton(onClick = onVerPassword, enabled = isFormEditable) {
+                Icon(
+                    if (verPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                    contentDescription = if (verPassword) "Ocultar contraseña" else "Mostrar contraseña"
+                )
+            }
+        },
+        habilitado = isFormEditable
+    )
+    MedidorPassword(password)
+    // EXAMEN (Caso 5): campo numerico critico. Se usa teclado de texto A PROPOSITO para poder probar letras
+    // ("abc"); la defensa real es toIntOrNull() + Elvis en enviar(), no el tipo de teclado.
+    AruyCampo(
+        valor = anios,
+        onValor = onAnios,
+        etiqueta = "Años de experiencia (opcional)",
+        placeholder = "Ejemplo: 3",
+        ayuda = "Escribe solo números. Si escribes letras o lo dejas vacío, se usa 0.",
+        maxCaracteres = 3,
+        teclado = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+        habilitado = isFormEditable
+    )
+    resultadoAnios?.let {
+        Text(
+            "Valor procesado: $it",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

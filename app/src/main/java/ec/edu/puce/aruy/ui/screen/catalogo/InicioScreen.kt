@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import ec.edu.puce.aruy.ui.components.BarraSuperior
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -76,6 +77,7 @@ fun InicioScreen(
     actividad: ActividadLocalViewModel,
     nombre: String?,
     invitado: Boolean,
+    auditHash: String, // EXAMEN (Caso 1): parametro tipado recibido desde la ruta (no anulable)
     onBuscar: () -> Unit,
     onCategoria: (CategoriaServicio) -> Unit,
     onVerTodos: (OrdenCatalogo?) -> Unit,
@@ -95,8 +97,11 @@ fun InicioScreen(
 
     LaunchedEffect(Unit) { catalogo.cargarSiHaceFalta() }
 
+    Column(Modifier.fillMaxSize()) {
+    // EXAMEN (Caso 1): barra superior (TopAppBar) que muestra el auditHash recibido por navegacion tipada
+    BarraSuperior(titulo = "Auditoría: $auditHash", onVolver = null)
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(start = Espacios.l, end = Espacios.l, top = Espacios.s, bottom = Espacios.xxl),
         verticalArrangement = Arrangement.spacedBy(Espacios.xl)
     ) {
@@ -202,6 +207,7 @@ fun InicioScreen(
                 }
             }
         }
+    }
     }
 
     if (menuAbierto && cuenta != null) {

@@ -3,6 +3,7 @@ package ec.edu.puce.aruy.ui.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -62,7 +63,13 @@ fun MarcaAruy(modifier: Modifier = Modifier, tamano: Dp = 96.dp) {
 /** Barra superior con botón de volver, para pantallas fuera de la barra inferior. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BarraSuperior(titulo: String, onVolver: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun BarraSuperior(
+    titulo: String,
+    onVolver: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    // EXAMEN (Caso 2): espacio para "acciones" de la TopAppBar (aqui va el Switch del formulario)
+    acciones: @Composable RowScope.() -> Unit = {}
+) {
     CenterAlignedTopAppBar(
         title = { Text(titulo, style = MaterialTheme.typography.titleLarge) },
         modifier = modifier.fillMaxWidth(),
@@ -73,6 +80,7 @@ fun BarraSuperior(titulo: String, onVolver: (() -> Unit)?, modifier: Modifier = 
                 }
             }
         },
+        actions = acciones,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
     )
 }

@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Plumbing
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -135,12 +135,14 @@ fun TarjetaServicio(
     esFavorito: Boolean = false,
     onFavorito: (() -> Unit)? = null
 ) {
-    ElevatedCard(
+    // EXAMEN (Caso 4): Card de Material 3 con roles de color del tema (sin colores hexadecimales).
+    // Conceptos del curso: color semantico (RDA-2 Tema 7y8, 1.2: "en M3 no se piensa en colores, sino en
+    // funciones") y Modifier.padding(8.dp) como espaciado perimetral. Material You aplica solo (API 31+).
+    Card(
         onClick = onClick,
-        modifier = modifier.width(240.dp),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        modifier = modifier.width(240.dp).padding(8.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(Modifier.padding(Espacios.s)) {
             PortadaServicio(
@@ -214,12 +216,13 @@ fun FilaServicio(
     modifier: Modifier = Modifier,
     accion: (@Composable () -> Unit)? = null
 ) {
-    ElevatedCard(
+    // EXAMEN (Caso 4): cada celda del LazyColumn (lista perezosa) va envuelta en un Card de Material 3.
+    // LazyColumn solo compone los items visibles (RDA-1 Tema 5, "Diagnostico de Rendimiento en Listas").
+    Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+        modifier = modifier.fillMaxWidth().padding(8.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             Modifier.padding(Espacios.m),

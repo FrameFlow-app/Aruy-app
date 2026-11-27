@@ -2,6 +2,7 @@ package ec.edu.puce.aruy.ui.navigation
 
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
+import ec.edu.puce.aruy.ui.screen.auth.AUDIT_HASH_REGISTRO
 import kotlinx.serialization.Serializable
 
 /**
@@ -16,7 +17,11 @@ sealed interface Destino {
     @Serializable data object Registro : Destino
     @Serializable data object Recuperar : Destino
 
-    @Serializable data object Inicio : Destino
+    // EXAMEN (Caso 1): el catalogo/lista perezosa deja de ser `data object` y pasa a `data class`
+    // con un parametro NO anulable (auditHash: String, sin valor por defecto).
+    // Concepto del curso (RDA-2 Tema 7y8, 2.2.3 "Contratos Tipados"): cada destino es una clase y el
+    // compilador valida la ruta; si algun navigate(...) no envia auditHash, el proyecto no compila.
+    @Serializable data class Inicio(val auditHash: String) : Destino
     @Serializable data object Guardados : Destino
     @Serializable data object Perfil : Destino
 
@@ -53,7 +58,8 @@ sealed interface Destino {
 
 /** Primera pantalla de cada rol, como destino tipado (equivale a [rutaInicial]). */
 fun destinoInicial(rol: RolNavegacion): Destino =
-    if (rol == RolNavegacion.PRESTADOR) Destino.Panel else Destino.Inicio
+    // EXAMEN (Caso 1): se inyecta el codigo estatico definido en la pantalla de origen (RegistroScreen)
+    if (rol == RolNavegacion.PRESTADOR) Destino.Panel else Destino.Inicio(auditHash = AUDIT_HASH_REGISTRO)
 
 /**
  * Traduce una clave de [Rutas] a su destino tipado. Sirve para la barra inferior y para las notificaciones,
@@ -66,7 +72,7 @@ fun destinoDeClave(clave: String?): Destino? = when (clave) {
     Rutas.LOGIN -> Destino.Login
     Rutas.REGISTRO -> Destino.Registro
     Rutas.RECUPERAR -> Destino.Recuperar
-    Rutas.INICIO -> Destino.Inicio
+    Rutas.INICIO -> Destino.Inicio(auditHash = AUDIT_HASH_REGISTRO) // EXAMEN (Caso 1)
     Rutas.BUSCAR -> Destino.Buscar()
     Rutas.GUARDADOS -> Destino.Guardados
     Rutas.PERFIL -> Destino.Perfil
