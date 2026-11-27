@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -80,7 +81,9 @@ fun PerfilScreen(
     puedeOfrecer: Boolean = false,
     onOfrecer: () -> Unit = {},
     solicitudesNuevas: Int = 0,
-    onSolicitudes: () -> Unit = {}
+    onSolicitudes: () -> Unit = {},
+    // EXAMEN (Parte 1): abre la pantalla "Acerca de"
+    onAcerca: () -> Unit = {}
 ) {
     var confirmarSalida by rememberSaveable { mutableStateOf(false) }
     val prestador = usuario.rol == RolUsuario.PRESTADOR
@@ -168,6 +171,9 @@ fun PerfilScreen(
             FilaAjuste(Icons.Filled.Flag, "Mis reportes", onReportes)
             SeparadorFilas()
             FilaAjuste(Icons.Filled.Gavel, "Normas de la comunidad", onNormas)
+            SeparadorFilas()
+            // EXAMEN (Parte 1): fila que lleva a "Acerca de" (versión beta, texto institucional y contacto)
+            FilaAjuste(Icons.Filled.Info, "Acerca de", onAcerca, texto = "Versión beta, equipo y contacto")
         }
 
         GrupoFilas("Sesión") {

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -42,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,6 +104,8 @@ fun RegistroScreen(
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
     var zona by rememberSaveable { mutableStateOf(ZONAS.first()) }
     var acepta by rememberSaveable { mutableStateOf(false) }
+    // EXAMEN (Parte 1): controla el cuadro que muestra la Política de Privacidad
+    var verPolitica by rememberSaveable { mutableStateOf(false) }
 
     var errorNombre by rememberSaveable { mutableStateOf<String?>(null) }
     var errorCorreo by rememberSaveable { mutableStateOf<String?>(null) }
@@ -124,7 +128,7 @@ fun RegistroScreen(
         errorFecha = nacimiento.error
         errorPassword = Validaciones.password(password)
         errorOficio = if (rol == RolUsuario.PRESTADOR && oficio == null) "Elige qué servicio ofreces." else null
-        errorAcepta = if (!acepta) "Para crear tu cuenta acepta las normas." else null
+        errorAcepta = if (!acepta) "Para crear tu cuenta acepta la Política de Privacidad." else null
         val hayError = listOf(errorNombre, errorCorreo, errorCelular, errorFecha, errorPassword, errorOficio, errorAcepta)
             .any { it != null }
         if (!hayError) {
@@ -304,9 +308,30 @@ fun RegistroScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(checked = acepta, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+                    // EXAMEN (Parte 1): texto exacto pedido; la casilla (acepta) empieza SIN marcar (false)
                     Text(
-                        "Acepto las normas de la comunidad y el uso de mis datos según la política de privacidad.",
+                        "Leí y acepto la Política de Privacidad",
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                // EXAMEN (Parte 1): enlace que abre la política dentro de la app
+                TextButton(onClick = { verPolitica = true }) { Text("Leer la Política de Privacidad") }
+                if (verPolitica) {
+                    AlertDialog(
+                        onDismissRequest = { verPolitica = false },
+                        confirmButton = { TextButton(onClick = { verPolitica = false }) { Text("Cerrar") } },
+                        title = { Text("Política de Privacidad") },
+                        text = {
+                            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Responsable: equipo FrameFlow, proyecto académico de la PUCE. Contacto: aruy.ec@gmail.com.")
+                                Text("Datos que se guardan: nombre, correo, celular, fecha de nacimiento y contraseña (cifrada). Si ofreces servicios: oficio, descripción, zona y fotos de tus trabajos.")
+                                Text("Para qué: crear tu cuenta, mostrar tu perfil y servicios, y permitir que te contacten por WhatsApp. No vendemos tus datos ni los usamos para publicidad.")
+                                Text("Dónde: base de datos en Neon y fotos en Supabase. No usamos tu ubicación GPS.")
+                                Text("Cuánto tiempo: mientras tu cuenta esté activa, hasta que la elimines.")
+                                Text("Borrar tus datos: Perfil, Eliminar mi cuenta. Se borra al instante y para siempre.")
+                                Text("Texto completo: docs/privacidad.html del repositorio del proyecto.")
+                            }
+                        }
                     )
                 }
                 errorAcepta?.let {

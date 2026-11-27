@@ -59,6 +59,12 @@ fun BienvenidaScreen(
                 style = MaterialTheme.typography.displayLarge,
                 modifier = Modifier.semantics { heading() }
             )
+            // EXAMEN (Parte 1): aviso de versión beta visible en la primera pantalla
+            Text(
+                "Versión beta · proyecto académico",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
             Text(
                 "Ofrece tu trabajo. Encuentra tu cliente.",
                 style = MaterialTheme.typography.headlineMedium

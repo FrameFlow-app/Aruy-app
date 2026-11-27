@@ -267,3 +267,35 @@ private fun Dato(titulo: String, texto: String) {
         Text(texto, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Espacios.xs))
     }
 }
+
+// EXAMEN (Parte 1): pantalla "Acerca de". Lleva el texto institucional exacto que pide el profesor,
+// el aviso de versión beta y el correo de contacto del equipo (no el institucional).
+@Composable
+fun AcercaScreen(onVolver: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        BarraSuperior("Acerca de", onVolver)
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(Espacios.l),
+            verticalArrangement = Arrangement.spacedBy(Espacios.m)
+        ) {
+            AruyTarjeta(tipo = TipoTarjeta.ACENTO, modifier = Modifier.fillMaxWidth()) {
+                Text("Aruy · Versión beta", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Estás probando una versión beta. Puede tener errores y está pensada para pruebas con datos inventados.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Dato(
+                "Proyecto académico",
+                "Proyecto académico estudiantil de la carrera de Ingeniería de Sistemas de Información de la " +
+                    "Pontificia Universidad Católica del Ecuador (PUCE), asignatura Emprendimiento Tecnológico, " +
+                    "desarrollado con metodología de aprendizaje-servicio y con el apoyo de la Coordinación de " +
+                    "Aprendizaje-Servicio. No es un producto oficial de la PUCE. " +
+                    "Profesor tutor: Ing. Francisco Rodríguez, MsC · frodriguez@puce.edu.ec"
+            )
+            Dato("Contacto del equipo", "aruy.ec@gmail.com")
+        }
+    }
+}

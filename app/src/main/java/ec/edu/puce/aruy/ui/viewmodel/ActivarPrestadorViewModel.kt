@@ -13,37 +13,43 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-
-/** Estado de la pantalla "Quiero ofrecer servicios". [listo] pasa a true cuando la cuenta ya ofrece servicios. */
-data class EstadoActivarPrestador(
-    val cargando: Boolean = false,
-    val listo: Boolean = false
-)
 
 /** "Quiero ofrecer servicios": una persona con cuenta empieza a ofrecer los suyos, con el mismo correo. */
 class ActivarPrestadorViewModel(
     private val activar: ActivarPerfilPrestadorUseCase
 ) : ViewModel() {
 
-    private val _ui = MutableStateFlow(EstadoActivarPrestador())
-    val ui: StateFlow<EstadoActivarPrestador> = _ui.asStateFlow()
+    // Definición de la data class del estado (inmutable: todos son val)
+    data class ScreenState(
+        val titleText: String = "Ofrecer mis servicios",
+        val isProcessing: Boolean = false,
+        val isReady: Boolean = false
+    )
+    //ViewModel puede cambiar el estado.
+    private val _uiState = MutableStateFlow(ScreenState())
+
+    // solo LECTURA
+    // cumple el flujo unidireccional
+    val uiState: StateFlow<ScreenState> = _uiState.asStateFlow()
 
     private val _mensajes = MutableSharedFlow<Aviso>(extraBufferCapacity = 4)
     val mensajes: SharedFlow<Aviso> = _mensajes.asSharedFlow()
 
     fun activarPerfil(datos: DatosPrestador) {
-        if (_ui.value.cargando) return
-        _ui.value = EstadoActivarPrestador(cargando = true)
+        if (_uiState.value.isProcessing) return
+        // copy() crea un estado nuevo; el anterior nunca se modifica (inmutabilidad)
+        _uiState.update { it.copy(isProcessing = true) }
         viewModelScope.launch {
             try {
                 activar(datos)
-                _ui.value = EstadoActivarPrestador(listo = true)
+                _uiState.update { it.copy(isProcessing = false, isReady = true) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _ui.value = EstadoActivarPrestador()
+                _uiState.update { it.copy(isProcessing = false, isReady = false) }
                 _mensajes.tryEmit(Aviso.error(mensajeDeActivar(e)))
             }
         }
