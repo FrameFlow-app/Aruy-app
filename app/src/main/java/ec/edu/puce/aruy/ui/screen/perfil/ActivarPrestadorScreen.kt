@@ -55,7 +55,9 @@ fun ActivarPrestadorScreen(
     onVolver: () -> Unit,
     onListo: () -> Unit
 ) {
-    val ui by viewModel.ui.collectAsStateWithLifecycle()
+    // se lee el flujo que se detiene cuando la app no se ve.
+    // solo LEE el estado, jamas se modifica
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     var oficio by rememberSaveable { mutableStateOf<CategoriaServicio?>(null) }
@@ -65,7 +67,7 @@ fun ActivarPrestadorScreen(
     var errorAnios by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { viewModel.mensajes.collect { snackbar.avisar(it) } }
-    LaunchedEffect(ui.listo) { if (ui.listo) onListo() }
+    LaunchedEffect(state.isReady) { if (state.isReady) onListo() }
 
     fun enviar() {
         errorOficio = if (oficio == null) "Elige qué servicio ofreces." else null
@@ -79,7 +81,8 @@ fun ActivarPrestadorScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            BarraSuperior(titulo = "Ofrecer mis servicios", onVolver = onVolver)
+            // EXAMEN (Caso 3, paso 3): el título sale del estado (state.titleText), ya no es un texto escrito a mano
+            BarraSuperior(titulo = state.titleText, onVolver = onVolver)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -129,11 +132,11 @@ fun ActivarPrestadorScreen(
                 )
 
                 BotonRelleno(
-                    texto = if (ui.cargando) "Activando…" else "Activar mi perfil de prestador",
+                    texto = if (state.isProcessing) "Activando…" else "Activar mi perfil de prestador",
                     onClick = ::enviar,
                     grande = true,
                     ancho = true,
-                    cargando = ui.cargando
+                    cargando = state.isProcessing
                 )
             }
         }
