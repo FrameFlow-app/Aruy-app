@@ -27,6 +27,8 @@ sealed interface Destino {
     @Serializable data object Bloqueados : Destino
     @Serializable data object Reportes : Destino
     @Serializable data object Normas : Destino
+    // EXAMEN (Parte 1): destino tipado de la pantalla "Acerca de" (texto institucional y correo del equipo)
+    @Serializable data object Acerca : Destino
     @Serializable data object EditarPerfil : Destino
     @Serializable data object Ajustes : Destino
     @Serializable data object Permisos : Destino

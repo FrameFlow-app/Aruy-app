@@ -92,6 +92,7 @@ import ec.edu.puce.aruy.ui.screen.catalogo.GuardadosScreen
 import ec.edu.puce.aruy.ui.screen.catalogo.InicioScreen
 import ec.edu.puce.aruy.ui.screen.catalogo.MisReportesScreen
 import ec.edu.puce.aruy.ui.screen.catalogo.NormasScreen
+import ec.edu.puce.aruy.ui.screen.perfil.AcercaScreen
 import ec.edu.puce.aruy.ui.screen.catalogo.PrestadorPublicoScreen
 import ec.edu.puce.aruy.ui.screen.prestador.EditorServicioScreen
 import ec.edu.puce.aruy.ui.screen.prestador.MisServiciosScreen
@@ -439,7 +440,9 @@ fun AruyApp(
                                 puedeOfrecer = rol == RolNavegacion.CONTRATANTE,
                                 onOfrecer = { navController.navigate(Destino.Ofrecer) },
                                 solicitudesNuevas = resumenSolicitudes.nuevas,
-                                onSolicitudes = { navController.navigate(Destino.Solicitudes) }
+                                onSolicitudes = { navController.navigate(Destino.Solicitudes) },
+                                // EXAMEN (Parte 1): navegación tipada hacia "Acerca de"
+                                onAcerca = { navController.navigate(Destino.Acerca) }
                             )
                         }
                     }
@@ -572,6 +575,11 @@ fun AruyApp(
                         MisReportesScreen(actividad, onVolver = { navController.popBackStack() }, onVerNormas = { navController.navigate(Destino.Normas) })
                     }
                 }
+                // EXAMEN (Parte 1): destino de la pantalla "Acerca de"
+                composable<Destino.Acerca> {
+                    AcercaScreen(onVolver = { navController.popBackStack() })
+                }
+
                 composable<Destino.Normas> {
                     NormasScreen(onVolver = { navController.popBackStack() }, onVerReportes = { navController.navigate(Destino.Reportes) })
                 }
